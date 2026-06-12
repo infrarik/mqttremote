@@ -1,6 +1,8 @@
 # MQTT Remote — ESP8266 NodeMCU
 
-> Télécommande MQTT à 3 boutons physiques, interface web dark mode, appuis longs configurables, mise à jour OTA et reconnexion automatique.
+> Télécommande à 3 boutons physiques, interface web dark mode, appuis longs configurables, mise à jour OTA et reconnexion automatique. Chaque bouton peut envoyer une trame MQTT, une requête HTTP POST, ou les deux simultanément. Le MQTT peut être désactivé indépendamment.
+
+<img width="1922" height="2048" alt="image" src="https://github.com/user-attachments/assets/de9eaeff-8d85-443f-a588-02ca9dd466e4" />
 
 ---
 
@@ -15,6 +17,7 @@
   - [Interface web — page de configuration](#interface-web--page-de-configuration)
   - [Appuis courts et appuis longs](#appuis-courts-et-appuis-longs)
   - [Personnalisation des boutons](#personnalisation-des-boutons)
+  - [Modes d'envoi : MQTT, POST ou les deux](#modes-denvoi--mqtt-post-ou-les-deux)
   - [LED de statut réseau](#led-de-statut-réseau)
   - [Reconnexion automatique](#reconnexion-automatique)
   - [Mise à jour OTA](#mise-à-jour-ota)
@@ -28,6 +31,7 @@
   - [Web interface — configuration page](#web-interface--configuration-page)
   - [Short press and long press](#short-press-and-long-press)
   - [Button customisation](#button-customisation)
+  - [Send modes: MQTT, POST or both](#send-modes-mqtt-post-or-both)
   - [Network status LED](#network-status-led)
   - [Automatic reconnection](#automatic-reconnection)
   - [OTA firmware update](#ota-firmware-update)
@@ -39,15 +43,17 @@
 
 ## Présentation
 
-**MQTT Remote** transforme un NodeMCU ESP8266 en télécommande MQTT autonome à 3 boutons physiques. Chaque bouton envoie un message MQTT configurable sur un topic de votre choix. L'appareil est entièrement paramétrable via une interface web embarquée, accessible depuis n'importe quel navigateur sur le réseau local.
+**MQTT Remote** transforme un NodeMCU ESP8266 en télécommande autonome à 3 boutons physiques. Chaque bouton peut envoyer un message **MQTT**, une requête **HTTP POST**, ou **les deux simultanément**, selon la configuration. Le MQTT peut être entièrement désactivé si seul le mode POST est souhaité. L'appareil est entièrement paramétrable via une interface web embarquée, accessible depuis n'importe quel navigateur sur le réseau local.
 
-Conçu à l'origine pour piloter des volets roulants Somfy via [ESPSomfy-RTS](https://github.com/rstrouse/ESPSomfy-RTS), le projet est générique et fonctionne avec tout broker MQTT (Mosquitto, Home Assistant, Jeedom, Node-RED, etc.).
+Conçu à l'origine pour piloter des volets roulants Somfy via [ESPSomfy-RTS](https://github.com/rstrouse/ESPSomfy-RTS), le projet est générique et fonctionne avec tout broker MQTT (Mosquitto, Home Assistant, Jeedom, Node-RED, etc.) et tout serveur HTTP acceptant des requêtes POST.
 
 **Fonctionnalités principales :**
 
 - 3 boutons physiques avec appui court et appui long indépendants
+- Envoi **MQTT**, **HTTP POST** ou **les deux** par bouton et par type d'appui
+- MQTT activable/désactivable globalement sans toucher au reste de la configuration
 - Interface web dark mode responsive (mobile et desktop)
-- Noms, couleurs et topics MQTT entièrement configurables par bouton
+- Noms, couleurs, topics MQTT et URLs POST entièrement configurables par bouton
 - Indication visuelle de l'état WiFi et MQTT (pastilles vertes/rouges)
 - Reconnexion WiFi et MQTT automatique avec backoff exponentiel
 - LED onboard codant l'état réseau par clignotement
@@ -104,9 +110,9 @@ Une fois connecté sur votre réseau, accédez à l'ESP via son adresse IP (affi
 
 La page d'accueil présente :
 
-- **Deux pastilles de statut** en haut : WiFi (vert = connecté, rouge = déconnecté) et MQTT (vert = connecté, rouge = déconnecté). L'adresse IP locale est affichée sous les pastilles.
+- **Deux pastilles de statut** en haut : WiFi (vert = connecté, rouge = déconnecté) et MQTT (vert = connecté, rouge = déconnecté, gris = désactivé). L'adresse IP locale est affichée sous les pastilles.
 - **Un compteur de reconnexions** apparaît si des coupures réseau ont eu lieu depuis le dernier démarrage.
-- **Les 3 boutons** en pleine largeur, avec leur nom et leur couleur personnalisés. Un clic déclenche l'envoi du message MQTT associé, exactement comme un appui physique sur le bouton correspondant.
+- **Les 3 boutons** en pleine largeur, avec leur nom et leur couleur personnalisés. Un clic déclenche l'envoi configuré (MQTT, POST ou les deux), exactement comme un appui physique sur le bouton correspondant.
 - **Un lien ⚙ configuration** en bas de page.
 
 ---
@@ -115,7 +121,7 @@ La page d'accueil présente :
 
 Accessible via `http://<IP>/setup` ou le lien en bas de la page d'accueil.
 
-La page est divisée en cinq sections :
+La page est divisée en six sections :
 
 ### ① Réseau WiFi
 
@@ -124,6 +130,7 @@ La page est divisée en cinq sections :
 
 ### ② Broker MQTT
 
+- **Activer le MQTT :** case à cocher permettant d'activer ou de désactiver globalement le MQTT. Lorsqu'il est désactivé, aucune connexion au broker n'est tentée et les pastilles MQTT disparaissent de la page d'accueil. Les champs de configuration MQTT restent visibles pour pouvoir être réactivés à tout moment.
 - **Serveur :** adresse IP ou nom d'hôte du broker MQTT (ex. `192.168.1.10` ou `homeassistant.local`).
 - **Port :** port du broker (1883 par défaut).
 - **Login / Mot de passe :** identifiants si votre broker requiert une authentification. Laisser vide si le broker est anonyme.
@@ -136,10 +143,16 @@ Pour chacun des 3 boutons, les champs suivants sont disponibles :
 |-------|-------------|
 | **Nom affiché** | Texte du bouton sur la page d'accueil (ex. `OUVRE`, `STOP`, `FERME`). Maximum 12 caractères. |
 | **Couleur** | Couleur du bouton : Vert, Blanc, Rouge, Bleu, Orange. La pastille de prévisualisation se met à jour en temps réel. |
-| **Topic court** | Topic MQTT sur lequel publier lors d'un appui court. |
-| **Payload court** | Message envoyé lors d'un appui court. |
-| **Topic long** | Topic MQTT pour l'appui long. Laisser vide pour désactiver l'appui long sur ce bouton. |
-| **Payload long** | Message envoyé lors d'un appui long. |
+| **Topic court** | Topic MQTT publié lors d'un appui court. Laisser vide pour ne pas envoyer de trame MQTT sur appui court. |
+| **Payload court** | Message MQTT envoyé lors d'un appui court. |
+| **URL POST court** | URL HTTP POST appelée lors d'un appui court. Laisser vide pour désactiver le POST sur appui court. |
+| **Body POST court** | Corps de la requête POST pour l'appui court (JSON ou texte libre). |
+| **Topic long** | Topic MQTT pour l'appui long. Laisser vide pour désactiver. |
+| **Payload long** | Message MQTT envoyé lors d'un appui long. |
+| **URL POST long** | URL HTTP POST appelée lors d'un appui long. Laisser vide pour désactiver. |
+| **Body POST long** | Corps de la requête POST pour l'appui long. |
+
+MQTT et POST sont indépendants : vous pouvez activer l'un, l'autre, ou les deux pour chaque appui. Si les deux sont configurés, ils sont envoyés simultanément.
 
 ### ④ Robustesse réseau
 
@@ -161,18 +174,16 @@ Le bouton **💾 sauvegarder et redémarrer** enregistre tous les paramètres da
 Chaque bouton physique supporte deux actions indépendantes :
 
 ### Appui court
-L'action courte se déclenche **immédiatement à l'appui** (front descendant). Le message MQTT configuré dans "Topic court" / "Payload court" est publié.
+L'action courte se déclenche **immédiatement à l'appui** (front descendant). Le message MQTT et/ou la requête POST configurés sont envoyés.
 
 ### Appui long
-Si le bouton reste enfoncé au-delà du seuil configuré (800 ms par défaut), l'action longue se déclenche **une seule fois**, sans attendre le relâchement. Si le topic long est vide, rien n'est envoyé.
+Si le bouton reste enfoncé au-delà du seuil configuré (800 ms par défaut), l'action longue se déclenche **une seule fois**, sans attendre le relâchement. Si le topic MQTT et l'URL POST sont tous les deux vides, rien n'est envoyé.
 
 > **Exemple d'utilisation Somfy :**
-> - Appui court UP → `{"command":"up"}` → monte le volet
-> - Appui long UP → `{"command":"my"}` → position mémorisée (montée)
-> - Appui court DOWN → `{"command":"down"}` → descend le volet
-> - Appui long DOWN → `{"command":"my"}` → position mémorisée (descente)
-> - Appui court MY → `{"command":"my"}` → stop / position MY
-> - Appui long MY → `{"command":"reset_motor"}` → recalibration moteur
+> - Appui court UP → topic `/shades/1/command`, payload `up` → monte le volet
+> - Appui long UP → POST `http://esp-somfy/shade/1/command`, body `{"command":"my"}` → position mémorisée
+> - Appui court DOWN → MQTT + POST simultanés → descend le volet et notifie un serveur tiers
+> - Appui long MY → topic vide, URL POST seule → recalibration moteur via API REST
 
 ---
 
@@ -180,12 +191,28 @@ Si le bouton reste enfoncé au-delà du seuil configuré (800 ms par défaut), l
 
 Depuis la page de configuration, section ③ :
 
-- **Nom :** tapez le texte à afficher (ex. `SALON`, `TOUT`, `BUREAU`). Le nom est mis à jour sur la page d'accueil après sauvegarde.
-- **Couleur :** choisissez parmi 5 couleurs. La pastille de prévisualisation dans le setup reflète le choix en temps réel avant sauvegarde.
-- **Topic et payload :** adaptez à votre infrastructure MQTT. Exemples compatibles ESPSomfy-RTS :
-  - Topic : `/shades/1/command`
-  - Payload court : `up` / `stop` / `down`
-  - Payload long : `my`
+- **Nom :** tapez le texte à afficher (ex. `SALON`, `TOUT`, `BUREAU`).
+- **Couleur :** choisissez parmi 5 couleurs. La pastille de prévisualisation reflète le choix en temps réel.
+- **MQTT :** renseignez topic et payload. Laisser le topic vide désactive le MQTT pour cet appui sans toucher au POST.
+- **POST :** renseignez l'URL et le body. Laisser l'URL vide désactive le POST pour cet appui sans toucher au MQTT.
+- Les deux modes peuvent coexister sur le même appui.
+
+---
+
+## Modes d'envoi : MQTT, POST ou les deux
+
+Le firmware supporte trois modes d'envoi, configurables indépendamment pour chaque bouton et chaque type d'appui :
+
+| Mode | Configuration |
+|------|--------------|
+| **MQTT seul** | Topic renseigné, URL POST vide |
+| **HTTP POST seul** | URL POST renseignée, topic vide (MQTT peut être désactivé globalement) |
+| **MQTT + POST simultanés** | Topic et URL POST tous les deux renseignés |
+| **Aucun** | Topic et URL POST tous les deux vides |
+
+**Désactivation globale du MQTT :** la case *Activer le MQTT* dans la section ② permet de couper entièrement le MQTT sans perdre la configuration des topics. Utile pour basculer temporairement en mode POST pur, ou pour utiliser l'appareil sur un réseau sans broker MQTT.
+
+Lorsque le MQTT est désactivé globalement, les requêtes POST continuent de fonctionner normalement.
 
 ---
 
@@ -196,6 +223,7 @@ La LED bleue intégrée (D4, GPIO 2) indique l'état réseau par son comportemen
 | État | Clignotement | Fréquence |
 |------|-------------|-----------|
 | WiFi + MQTT connectés | Éteinte fixe | — |
+| MQTT désactivé (WiFi OK) | Éteinte fixe | — |
 | MQTT déconnecté (WiFi OK) | Lent | ~0,6 Hz (800 ms) |
 | WiFi déconnecté | Rapide | ~3,3 Hz (150 ms) |
 | Reconnexion en cours | Moyen | ~1,6 Hz (300 ms) |
@@ -212,7 +240,7 @@ L'ESP surveille en permanence l'état du WiFi et du MQTT. En cas de coupure :
 La reconnexion est tentée avec un backoff exponentiel : 5 s, puis 10 s, 20 s, et plafonne à 30 s entre chaque tentative. L'ESP ne redémarre jamais automatiquement pour cause de perte réseau.
 
 **MQTT déconnecté (WiFi intact) :**
-Une tentative de reconnexion au broker est effectuée toutes les 5 secondes.
+Une tentative de reconnexion au broker est effectuée toutes les 5 secondes. Si le MQTT est désactivé globalement, aucune tentative n'est effectuée.
 
 À chaque reconnexion réussie après une coupure, le compteur de reconnexions est incrémenté et affiché sur la page d'accueil, pour tracer les instabilités réseau.
 
@@ -254,6 +282,7 @@ Avec Arduino IDE : menu **Croquis → Exporter les binaires compilées**. Le `.b
 | `ESP8266WiFi` | ESP8266 Arduino Core |
 | `ESP8266WebServer` | ESP8266 Arduino Core |
 | `ESP8266HTTPUpdateServer` | ESP8266 Arduino Core |
+| `ESP8266HTTPClient` | ESP8266 Arduino Core |
 | `ArduinoJson` | Benoit Blanchon |
 | `PubSubClient` | Nick O'Leary |
 | `LittleFS` | ESP8266 Arduino Core |
@@ -276,16 +305,18 @@ lib_deps =
 
 ## Overview
 
-**MQTT Remote** turns an ESP8266 NodeMCU into a standalone 3-button MQTT remote control. Each button publishes a configurable MQTT message to a topic of your choice. The device is fully configured through a built-in web interface, accessible from any browser on the local network.
+**MQTT Remote** turns an ESP8266 NodeMCU into a standalone 3-button remote control. Each button can send an **MQTT message**, an **HTTP POST request**, or **both simultaneously**, depending on configuration. MQTT can be disabled entirely if only POST mode is needed. The device is fully configured through a built-in web interface, accessible from any browser on the local network.
 
-Originally designed to control Somfy roller blinds via [ESPSomfy-RTS](https://github.com/rstrouse/ESPSomfy-RTS), the project is generic and works with any MQTT broker (Mosquitto, Home Assistant, Jeedom, Node-RED, etc.).
+Originally designed to control Somfy roller blinds via [ESPSomfy-RTS](https://github.com/rstrouse/ESPSomfy-RTS), the project is generic and works with any MQTT broker (Mosquitto, Home Assistant, Jeedom, Node-RED, etc.) and any HTTP server accepting POST requests.
 
 **Key features:**
 
 - 3 physical buttons with independent short press and long press actions
+- Send **MQTT**, **HTTP POST** or **both** per button and per press type
+- MQTT can be globally enabled or disabled without losing configuration
 - Responsive dark mode web interface (mobile and desktop)
-- Button names, colours and MQTT topics fully configurable per button
-- Visual WiFi and MQTT status indicators (green/red badges)
+- Button names, colours, MQTT topics and POST URLs fully configurable per button
+- Visual WiFi and MQTT status indicators (green/red/grey badges)
 - Automatic WiFi and MQTT reconnection with exponential backoff
 - Onboard LED encoding network status by blink pattern
 - Over-the-air firmware update (OTA) via `.bin` file
@@ -341,9 +372,9 @@ Once connected to your network, access the ESP via its IP address (shown in the 
 
 The home page shows:
 
-- **Two status badges** at the top: WiFi (green = connected, red = disconnected) and MQTT (green = connected, red = disconnected). The local IP address is displayed below the badges.
+- **Two status badges** at the top: WiFi (green = connected, red = disconnected) and MQTT (green = connected, red = disconnected, grey = disabled). The local IP address is displayed below the badges.
 - **A reconnection counter** appears if network drops have occurred since the last boot.
-- **The 3 buttons** full-width, with their custom names and colours. A click triggers the associated MQTT message, exactly like pressing the corresponding physical button.
+- **The 3 buttons** full-width, with their custom names and colours. A click triggers the configured send action (MQTT, POST or both), exactly like pressing the corresponding physical button.
 - **A ⚙ configuration link** at the bottom of the page.
 
 ---
@@ -352,7 +383,7 @@ The home page shows:
 
 Accessible via `http://<IP>/setup` or the link at the bottom of the home page.
 
-The page is divided into five sections:
+The page is divided into six sections:
 
 ### ① WiFi network
 
@@ -361,6 +392,7 @@ The page is divided into five sections:
 
 ### ② MQTT broker
 
+- **Enable MQTT:** checkbox to globally enable or disable MQTT. When disabled, no connection to the broker is attempted and the MQTT badge disappears from the home page. The MQTT configuration fields remain visible so MQTT can be re-enabled at any time.
 - **Server:** IP address or hostname of the MQTT broker (e.g. `192.168.1.10` or `homeassistant.local`).
 - **Port:** broker port (1883 by default).
 - **Login / Password:** credentials if your broker requires authentication. Leave blank for anonymous brokers.
@@ -373,10 +405,16 @@ For each of the 3 buttons, the following fields are available:
 |-------|-------------|
 | **Display name** | Button label on the home page (e.g. `OPEN`, `STOP`, `CLOSE`). Maximum 12 characters. |
 | **Colour** | Button colour: Green, White, Red, Blue, Orange. The preview dot updates in real time. |
-| **Short topic** | MQTT topic to publish to on a short press. |
-| **Short payload** | Message sent on a short press. |
-| **Long topic** | MQTT topic for the long press. Leave blank to disable long press on this button. |
-| **Long payload** | Message sent on a long press. |
+| **Short topic** | MQTT topic published on a short press. Leave blank to send no MQTT message on short press. |
+| **Short payload** | MQTT message sent on a short press. |
+| **Short POST URL** | HTTP POST URL called on a short press. Leave blank to disable POST on short press. |
+| **Short POST body** | POST request body for short press (JSON or plain text). |
+| **Long topic** | MQTT topic for the long press. Leave blank to disable. |
+| **Long payload** | MQTT message sent on a long press. |
+| **Long POST URL** | HTTP POST URL called on a long press. Leave blank to disable. |
+| **Long POST body** | POST request body for the long press. |
+
+MQTT and POST are independent: you can enable one, the other, or both for each press type. If both are configured, they are sent simultaneously.
 
 ### ④ Network robustness
 
@@ -398,18 +436,16 @@ The **💾 save and reboot** button writes all settings to flash memory (LittleF
 Each physical button supports two independent actions:
 
 ### Short press
-The short action fires **immediately on press** (falling edge). The MQTT message configured in "Short topic" / "Short payload" is published.
+The short action fires **immediately on press** (falling edge). The configured MQTT message and/or HTTP POST request are sent.
 
 ### Long press
-If the button is held beyond the configured threshold (800 ms by default), the long action fires **once**, without waiting for release. If the long topic is empty, nothing is sent.
+If the button is held beyond the configured threshold (800 ms by default), the long action fires **once**, without waiting for release. If both the MQTT topic and POST URL are empty, nothing is sent.
 
 > **Example Somfy usage:**
-> - Short press UP → `{"command":"up"}` → raise the blind
-> - Long press UP → `{"command":"my"}` → memorised position (up side)
-> - Short press DOWN → `{"command":"down"}` → lower the blind
-> - Long press DOWN → `{"command":"my"}` → memorised position (down side)
-> - Short press MY → `{"command":"my"}` → stop / MY position
-> - Long press MY → `{"command":"reset_motor"}` → motor recalibration
+> - Short press UP → topic `/shades/1/command`, payload `up` → raise the blind
+> - Long press UP → POST `http://esp-somfy/shade/1/command`, body `{"command":"my"}` → memorised position
+> - Short press DOWN → MQTT + POST simultaneously → lower the blind and notify a third-party server
+> - Long press MY → empty topic, POST URL only → motor recalibration via REST API
 
 ---
 
@@ -417,12 +453,28 @@ If the button is held beyond the configured threshold (800 ms by default), the l
 
 From the configuration page, section ③:
 
-- **Name:** type the label to display (e.g. `LIVING`, `ALL`, `OFFICE`). The name is updated on the home page after saving.
-- **Colour:** choose from 5 colours. The preview dot in the setup reflects the choice in real time before saving.
-- **Topic and payload:** adapt to your MQTT infrastructure. ESPSomfy-RTS compatible examples:
-  - Topic: `/shades/1/command`
-  - Short payload: `up` / `stop` / `down`
-  - Long payload: `my`
+- **Name:** type the label to display (e.g. `LIVING`, `ALL`, `OFFICE`).
+- **Colour:** choose from 5 colours. The preview dot reflects the choice in real time.
+- **MQTT:** fill in topic and payload. Leaving the topic blank disables MQTT for that press without affecting POST.
+- **POST:** fill in the URL and body. Leaving the URL blank disables POST for that press without affecting MQTT.
+- Both modes can coexist on the same press.
+
+---
+
+## Send modes: MQTT, POST or both
+
+The firmware supports three send modes, configurable independently for each button and each press type:
+
+| Mode | Configuration |
+|------|--------------|
+| **MQTT only** | Topic filled in, POST URL blank |
+| **HTTP POST only** | POST URL filled in, topic blank (MQTT can be globally disabled) |
+| **MQTT + POST simultaneously** | Both topic and POST URL filled in |
+| **None** | Both topic and POST URL blank |
+
+**Global MQTT disable:** the *Enable MQTT* checkbox in section ② cuts MQTT entirely without losing topic configuration. Useful to temporarily switch to POST-only mode, or to use the device on a network without an MQTT broker.
+
+When MQTT is globally disabled, POST requests continue to work normally.
 
 ---
 
@@ -433,6 +485,7 @@ The built-in blue LED (D4, GPIO 2) indicates network status by its blink behavio
 | State | Blink | Frequency |
 |-------|-------|-----------|
 | WiFi + MQTT connected | Steady off | — |
+| MQTT disabled (WiFi OK) | Steady off | — |
 | MQTT disconnected (WiFi OK) | Slow blink | ~0.6 Hz (800 ms) |
 | WiFi disconnected | Fast blink | ~3.3 Hz (150 ms) |
 | Reconnection in progress | Medium blink | ~1.6 Hz (300 ms) |
@@ -449,7 +502,7 @@ The ESP continuously monitors WiFi and MQTT status. On a drop:
 Reconnection is attempted with exponential backoff: 5 s, then 10 s, 20 s, capped at 30 s between attempts. The ESP never automatically reboots due to a network loss.
 
 **MQTT disconnected (WiFi intact):**
-A reconnection attempt to the broker is made every 5 seconds.
+A reconnection attempt to the broker is made every 5 seconds. If MQTT is globally disabled, no attempt is made.
 
 Each successful reconnection after a drop increments the reconnection counter displayed on the home page, helping track network instability.
 
@@ -491,6 +544,7 @@ Install via the Arduino IDE library manager or `platformio.ini`:
 | `ESP8266WiFi` | ESP8266 Arduino Core |
 | `ESP8266WebServer` | ESP8266 Arduino Core |
 | `ESP8266HTTPUpdateServer` | ESP8266 Arduino Core |
+| `ESP8266HTTPClient` | ESP8266 Arduino Core |
 | `ArduinoJson` | Benoit Blanchon |
 | `PubSubClient` | Nick O'Leary |
 | `LittleFS` | ESP8266 Arduino Core |
