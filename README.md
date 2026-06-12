@@ -158,7 +158,6 @@ Pour chacun des 3 boutons, les champs suivants sont disponibles :
 
 MQTT et POST sont indépendants : vous pouvez activer l'un, l'autre, ou les deux pour chaque appui. Si les deux sont configurés, ils sont envoyés simultanément.
 
-MQTT et POST sont indépendants : vous pouvez activer l'un, l'autre, ou les deux pour chaque appui. Si les deux sont configurés, ils sont envoyés simultanément.
 
 ### ④ Robustesse réseau
 
