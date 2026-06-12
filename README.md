@@ -1,6 +1,6 @@
-# MQTT Remote — ESP8266 NodeMCU
+# MQTT & POST Remote — ESP8266 NodeMCU
 
-> Télécommande à 3 boutons physiques, interface web dark mode, appuis longs et double clic configurables, mise à jour OTA et reconnexion automatique. Chaque bouton peut envoyer une trame MQTT, une requête HTTP POST, ou les deux simultanément. Le MQTT peut être désactivé indépendamment.
+> Télécommande à 3 boutons physiques, interface web dark mode, appuis simples, doubles et longs configurables, mise à jour OTA et reconnexion automatique. Chaque bouton peut envoyer une trame MQTT, une requête HTTP POST, ou les deux simultanément. Le MQTT peut être désactivé indépendamment.
 
 <img width="480" height="512" alt="image" src="https://github.com/user-attachments/assets/de9eaeff-8d85-443f-a588-02ca9dd466e4" />
 
@@ -15,7 +15,7 @@
   - [Premier démarrage](#premier-démarrage)
   - [Interface web — page d'accueil](#interface-web--page-daccueil)
   - [Interface web — page de configuration](#interface-web--page-de-configuration)
-  - [Appuis courts et appuis longs](#appuis-courts-et-appuis-longs)
+  - [Appuis courts, doubles et longs](#appuis-courts-doubles-et-longs)
   - [Personnalisation des boutons](#personnalisation-des-boutons)
   - [Modes d'envoi : MQTT, POST ou les deux](#modes-denvoi--mqtt-post-ou-les-deux)
   - [LED de statut réseau](#led-de-statut-réseau)
@@ -29,7 +29,7 @@
   - [First boot](#first-boot)
   - [Web interface — home page](#web-interface--home-page)
   - [Web interface — configuration page](#web-interface--configuration-page)
-  - [Short press and long press](#short-press-and-long-press)
+  - [Short press, double press and long press](#short-press-double-press-and-long-press)
   - [Button customisation](#button-customisation)
   - [Send modes: MQTT, POST or both](#send-modes-mqtt-post-or-both)
   - [Network status LED](#network-status-led)
@@ -49,7 +49,7 @@ Conçu à l'origine pour piloter des volets roulants Somfy via [ESPSomfy-RTS](ht
 
 **Fonctionnalités principales :**
 
-- 3 boutons physiques avec appui court et appui long indépendants
+- 3 boutons physiques avec appui court, double clic et appui long indépendants
 - Envoi **MQTT**, **HTTP POST** ou **les deux** par bouton et par type d'appui
 - MQTT activable/désactivable globalement sans toucher au reste de la configuration
 - Interface web dark mode responsive (mobile et desktop)
@@ -147,6 +147,10 @@ Pour chacun des 3 boutons, les champs suivants sont disponibles :
 | **Payload court** | Message MQTT envoyé lors d'un appui court. |
 | **URL POST court** | URL HTTP POST appelée lors d'un appui court. Laisser vide pour désactiver le POST sur appui court. |
 | **Body POST court** | Corps de la requête POST pour l'appui court (JSON ou texte libre). |
+| **Topic double** | Topic MQTT publié lors d'un double clic. Laisser vide pour désactiver. |
+| **Payload double** | Message MQTT envoyé lors d'un double clic. |
+| **URL POST double** | URL HTTP POST appelée lors d'un double clic. Laisser vide pour désactiver. |
+| **Body POST double** | Corps de la requête POST pour le double clic. |
 | **Topic long** | Topic MQTT pour l'appui long. Laisser vide pour désactiver. |
 | **Payload long** | Message MQTT envoyé lors d'un appui long. |
 | **URL POST long** | URL HTTP POST appelée lors d'un appui long. Laisser vide pour désactiver. |
@@ -169,20 +173,25 @@ Le bouton **💾 sauvegarder et redémarrer** enregistre tous les paramètres da
 
 ---
 
-## Appuis courts et appuis longs
+## Appuis courts, doubles et longs
 
-Chaque bouton physique supporte deux actions indépendantes :
+Chaque bouton physique supporte trois actions indépendantes :
 
 ### Appui court
 L'action courte se déclenche **immédiatement à l'appui** (front descendant). Le message MQTT et/ou la requête POST configurés sont envoyés.
+
+### Double clic
+Deux appuis rapides successifs déclenchent l'action double. Le message MQTT et/ou la requête POST configurés pour le double clic sont envoyés, indépendamment de l'action courte. Si le topic MQTT et l'URL POST sont tous les deux vides, rien n'est envoyé.
 
 ### Appui long
 Si le bouton reste enfoncé au-delà du seuil configuré (800 ms par défaut), l'action longue se déclenche **une seule fois**, sans attendre le relâchement. Si le topic MQTT et l'URL POST sont tous les deux vides, rien n'est envoyé.
 
 > **Exemple d'utilisation Somfy :**
 > - Appui court UP → topic `/shades/1/command`, payload `up` → monte le volet
-> - Appui long UP → POST `http://esp-somfy/shade/1/command`, body `{"command":"my"}` → position mémorisée
+> - Double clic UP → topic `/shades/1/command`, payload `my` → position mémorisée
+> - Appui long UP → POST `http://esp-somfy/shade/1/command`, body `{"command":"my"}` → position mémorisée côté API
 > - Appui court DOWN → MQTT + POST simultanés → descend le volet et notifie un serveur tiers
+> - Double clic MY → topic vide, URL POST seule → commande personnalisée via API REST
 > - Appui long MY → topic vide, URL POST seule → recalibration moteur via API REST
 
 ---
@@ -193,8 +202,8 @@ Depuis la page de configuration, section ③ :
 
 - **Nom :** tapez le texte à afficher (ex. `SALON`, `TOUT`, `BUREAU`).
 - **Couleur :** choisissez parmi 5 couleurs. La pastille de prévisualisation reflète le choix en temps réel.
-- **MQTT :** renseignez topic et payload. Laisser le topic vide désactive le MQTT pour cet appui sans toucher au POST.
-- **POST :** renseignez l'URL et le body. Laisser l'URL vide désactive le POST pour cet appui sans toucher au MQTT.
+- **MQTT :** renseignez topic et payload pour chaque type d'appui (court, double, long). Laisser le topic vide désactive le MQTT pour cet appui sans toucher au POST.
+- **POST :** renseignez l'URL et le body pour chaque type d'appui. Laisser l'URL vide désactive le POST pour cet appui sans toucher au MQTT.
 - Les deux modes peuvent coexister sur le même appui.
 
 ---
@@ -311,7 +320,7 @@ Originally designed to control Somfy roller blinds via [ESPSomfy-RTS](https://gi
 
 **Key features:**
 
-- 3 physical buttons with independent short press and long press actions
+- 3 physical buttons with independent short press, double press and long press actions
 - Send **MQTT**, **HTTP POST** or **both** per button and per press type
 - MQTT can be globally enabled or disabled without losing configuration
 - Responsive dark mode web interface (mobile and desktop)
@@ -409,6 +418,10 @@ For each of the 3 buttons, the following fields are available:
 | **Short payload** | MQTT message sent on a short press. |
 | **Short POST URL** | HTTP POST URL called on a short press. Leave blank to disable POST on short press. |
 | **Short POST body** | POST request body for short press (JSON or plain text). |
+| **Double topic** | MQTT topic published on a double press. Leave blank to disable. |
+| **Double payload** | MQTT message sent on a double press. |
+| **Double POST URL** | HTTP POST URL called on a double press. Leave blank to disable. |
+| **Double POST body** | POST request body for the double press. |
 | **Long topic** | MQTT topic for the long press. Leave blank to disable. |
 | **Long payload** | MQTT message sent on a long press. |
 | **Long POST URL** | HTTP POST URL called on a long press. Leave blank to disable. |
@@ -431,20 +444,25 @@ The **💾 save and reboot** button writes all settings to flash memory (LittleF
 
 ---
 
-## Short press and long press
+## Short press, double press and long press
 
-Each physical button supports two independent actions:
+Each physical button supports three independent actions:
 
 ### Short press
 The short action fires **immediately on press** (falling edge). The configured MQTT message and/or HTTP POST request are sent.
+
+### Double press
+Two quick successive presses trigger the double press action. The MQTT message and/or HTTP POST request configured for double press are sent, independently from the short press action. If both the MQTT topic and POST URL are empty, nothing is sent.
 
 ### Long press
 If the button is held beyond the configured threshold (800 ms by default), the long action fires **once**, without waiting for release. If both the MQTT topic and POST URL are empty, nothing is sent.
 
 > **Example Somfy usage:**
 > - Short press UP → topic `/shades/1/command`, payload `up` → raise the blind
-> - Long press UP → POST `http://esp-somfy/shade/1/command`, body `{"command":"my"}` → memorised position
+> - Double press UP → topic `/shades/1/command`, payload `my` → memorised position
+> - Long press UP → POST `http://esp-somfy/shade/1/command`, body `{"command":"my"}` → memorised position via API
 > - Short press DOWN → MQTT + POST simultaneously → lower the blind and notify a third-party server
+> - Double press MY → empty topic, POST URL only → custom command via REST API
 > - Long press MY → empty topic, POST URL only → motor recalibration via REST API
 
 ---
@@ -455,8 +473,8 @@ From the configuration page, section ③:
 
 - **Name:** type the label to display (e.g. `LIVING`, `ALL`, `OFFICE`).
 - **Colour:** choose from 5 colours. The preview dot reflects the choice in real time.
-- **MQTT:** fill in topic and payload. Leaving the topic blank disables MQTT for that press without affecting POST.
-- **POST:** fill in the URL and body. Leaving the URL blank disables POST for that press without affecting MQTT.
+- **MQTT:** fill in topic and payload for each press type (short, double, long). Leaving the topic blank disables MQTT for that press without affecting POST.
+- **POST:** fill in the URL and body for each press type. Leaving the URL blank disables POST for that press without affecting MQTT.
 - Both modes can coexist on the same press.
 
 ---
