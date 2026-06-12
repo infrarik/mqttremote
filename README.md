@@ -158,6 +158,8 @@ Pour chacun des 3 boutons, les champs suivants sont disponibles :
 
 MQTT et POST sont indépendants : vous pouvez activer l'un, l'autre, ou les deux pour chaque appui. Si les deux sont configurés, ils sont envoyés simultanément.
 
+MQTT et POST sont indépendants : vous pouvez activer l'un, l'autre, ou les deux pour chaque appui. Si les deux sont configurés, ils sont envoyés simultanément.
+
 ### ④ Robustesse réseau
 
 - **Seuil appui long (ms) :** durée en millisecondes à partir de laquelle un appui est considéré comme long (valeur entre 300 et 3000 ms, 800 ms par défaut). Ce réglage s'applique aux 3 boutons simultanément.
