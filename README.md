@@ -1,6 +1,6 @@
 # MQTT Remote — ESP8266 NodeMCU
 
-> Télécommande à 3 boutons physiques, interface web dark mode, appuis longs configurables, mise à jour OTA et reconnexion automatique. Chaque bouton peut envoyer une trame MQTT, une requête HTTP POST, ou les deux simultanément. Le MQTT peut être désactivé indépendamment.
+> Télécommande à 3 boutons physiques, interface web dark mode, appuis longs et double clic configurables, mise à jour OTA et reconnexion automatique. Chaque bouton peut envoyer une trame MQTT, une requête HTTP POST, ou les deux simultanément. Le MQTT peut être désactivé indépendamment.
 
 <img width="480" height="512" alt="image" src="https://github.com/user-attachments/assets/de9eaeff-8d85-443f-a588-02ca9dd466e4" />
 
