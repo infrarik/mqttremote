@@ -38,6 +38,10 @@ char btn1_long_act[10]     = "mqtt";   // "mqtt", "http", "both"
 char btn1_long_topic[60]   = "";
 char btn1_long_payload[100]= "";
 char btn1_long_url[150]    = "";
+char btn1_click_mode[10]   = "mqtt";   // double clic
+char btn1_click_topic[60]  = "";
+char btn1_click_payload[100]= "";
+char btn1_click_url[150]   = "";
 
 // bouton 2
 char btn2_mode[10]         = "mqtt";
@@ -51,6 +55,10 @@ char btn2_long_act[10]     = "mqtt";
 char btn2_long_topic[60]   = "";
 char btn2_long_payload[100]= "";
 char btn2_long_url[150]    = "";
+char btn2_click_mode[10]   = "mqtt";
+char btn2_click_topic[60]  = "";
+char btn2_click_payload[100]= "";
+char btn2_click_url[150]   = "";
 
 // bouton 3
 char btn3_mode[10]         = "mqtt";
@@ -64,9 +72,14 @@ char btn3_long_act[10]     = "mqtt";
 char btn3_long_topic[60]   = "";
 char btn3_long_payload[100]= "";
 char btn3_long_url[150]    = "";
+char btn3_click_mode[10]   = "mqtt";
+char btn3_click_topic[60]  = "";
+char btn3_click_payload[100]= "";
+char btn3_click_url[150]   = "";
 
-// seuil appui long en ms
-unsigned int long_press_ms = 800;
+// seuils temporels en ms
+unsigned int long_press_ms  = 800;
+unsigned int double_click_ms = 400;
 
 // ------------------------------------------------------------------ etat reseau
 enum netstate { net_ok, net_mqtt_ko, net_wifi_ko, net_reconnecting };
@@ -94,17 +107,10 @@ unsigned long last_debounce_time2 = 0;
 unsigned long last_debounce_time3 = 0;
 const unsigned long debounce_delay = 50;
 
-// timestamps d'appui pour detection appui long
-unsigned long press_start1 = 0;
-unsigned long press_start2 = 0;
-unsigned long press_start3 = 0;
-
-bool long_fired1 = false;
-bool long_fired2 = false;
-bool long_fired3 = false;
-bool pressed1 = false;
-bool pressed2 = false;
-bool pressed3 = false;
+// structures pour machine d'etat des clics physiques
+unsigned long press_start1 = 0; unsigned long release_time1 = 0; int click_count1 = 0; bool pressed1 = false; bool long_fired1 = false;
+unsigned long press_start2 = 0; unsigned long release_time2 = 0; int click_count2 = 0; bool pressed2 = false; bool long_fired2 = false;
+unsigned long press_start3 = 0; unsigned long release_time3 = 0; int click_count3 = 0; bool pressed3 = false; bool long_fired3 = false;
 
 // ------------------------------------------------------------------ objets
 ESP8266WebServer         server(80);
@@ -146,7 +152,6 @@ bool execute_action(const char* mode, const char* topic, const char* payload, co
   bool success = true;
   String smode = String(mode);
 
-  // traitement mqtt (uniquement si active globalement et selectionne par l'action)
   if (mqtt_enabled && (smode == "mqtt" || smode == "both")) {
     if (strlen(topic) > 0) {
       if (mqtt_client.connected()) {
@@ -163,7 +168,6 @@ bool execute_action(const char* mode, const char* topic, const char* payload, co
     }
   }
 
-  // traitement http post
   if (smode == "http" || smode == "both") {
     if (strlen(url) > 0) {
       if (WiFi.status() == WL_CONNECTED) {
@@ -201,7 +205,7 @@ void load_config() {
   if (!LittleFS.exists("/config.json")) return;
   File f = LittleFS.open("/config.json", "r");
   if (!f) return;
-  StaticJsonDocument<3072> json;
+  StaticJsonDocument<4096> json;
   if (deserializeJson(json, f) == DeserializationError::Ok) {
     strlcpy(wifi_ssid,           json["wifi_ssid"]           | "",              sizeof(wifi_ssid));
     strlcpy(wifi_pass,           json["wifi_pass"]           | "",              sizeof(wifi_pass));
@@ -210,6 +214,7 @@ void load_config() {
     strlcpy(mqtt_port,           json["mqtt_port"]           | "1883",          sizeof(mqtt_port));
     strlcpy(mqtt_user,           json["mqtt_user"]           | "",              sizeof(mqtt_user));
     strlcpy(mqtt_pass,           json["mqtt_pass"]           | "",              sizeof(mqtt_pass));
+    
     // bouton 1
     strlcpy(btn1_mode,           json["btn1_mode"]           | "mqtt",          sizeof(btn1_mode));
     strlcpy(btn1_topic,          json["btn1_topic"]          | "esp/btn1/topic",sizeof(btn1_topic));
@@ -222,6 +227,11 @@ void load_config() {
     strlcpy(btn1_long_url,       json["btn1_long_url"]       | "",              sizeof(btn1_long_url));
     strlcpy(btn1_long_mode,      json["btn1_long_mode"]      | "both",          sizeof(btn1_long_mode));
     strlcpy(btn1_long_act,       json["btn1_long_act"]       | "mqtt",          sizeof(btn1_long_act));
+    strlcpy(btn1_click_mode,     json["btn1_click_mode"]     | "mqtt",          sizeof(btn1_click_mode));
+    strlcpy(btn1_click_topic,    json["btn1_click_topic"]    | "",              sizeof(btn1_click_topic));
+    strlcpy(btn1_click_payload,  json["btn1_click_payload"]  | "",              sizeof(btn1_click_payload));
+    strlcpy(btn1_click_url,      json["btn1_click_url"]      | "",              sizeof(btn1_click_url));
+
     // bouton 2
     strlcpy(btn2_mode,           json["btn2_mode"]           | "mqtt",          sizeof(btn2_mode));
     strlcpy(btn2_topic,          json["btn2_topic"]          | "esp/btn2/topic",sizeof(btn2_topic));
@@ -234,6 +244,11 @@ void load_config() {
     strlcpy(btn2_long_url,       json["btn2_long_url"]       | "",              sizeof(btn2_long_url));
     strlcpy(btn2_long_mode,      json["btn2_long_mode"]      | "both",          sizeof(btn2_long_mode));
     strlcpy(btn2_long_act,       json["btn2_long_act"]       | "mqtt",          sizeof(btn2_long_act));
+    strlcpy(btn2_click_mode,     json["btn2_click_mode"]     | "mqtt",          sizeof(btn2_click_mode));
+    strlcpy(btn2_click_topic,    json["btn2_click_topic"]    | "",              sizeof(btn2_click_topic));
+    strlcpy(btn2_click_payload,  json["btn2_click_payload"]  | "",              sizeof(btn2_click_payload));
+    strlcpy(btn2_click_url,      json["btn2_click_url"]      | "",              sizeof(btn2_click_url));
+
     // bouton 3
     strlcpy(btn3_mode,           json["btn3_mode"]           | "mqtt",          sizeof(btn3_mode));
     strlcpy(btn3_topic,          json["btn3_topic"]          | "esp/btn3/topic",sizeof(btn3_topic));
@@ -246,13 +261,19 @@ void load_config() {
     strlcpy(btn3_long_url,       json["btn3_long_url"]       | "",              sizeof(btn3_long_url));
     strlcpy(btn3_long_mode,      json["btn3_long_mode"]      | "both",          sizeof(btn3_long_mode));
     strlcpy(btn3_long_act,       json["btn3_long_act"]       | "mqtt",          sizeof(btn3_long_act));
-    long_press_ms = json["long_press_ms"] | 800;
+    strlcpy(btn3_click_mode,     json["btn3_click_mode"]     | "mqtt",          sizeof(btn3_click_mode));
+    strlcpy(btn3_click_topic,    json["btn3_click_topic"]    | "",              sizeof(btn3_click_topic));
+    strlcpy(btn3_click_payload,  json["btn3_click_payload"]  | "",              sizeof(btn3_click_payload));
+    strlcpy(btn3_click_url,      json["btn3_click_url"]      | "",              sizeof(btn3_click_url));
+    
+    long_press_ms   = json["long_press_ms"]   | 800;
+    double_click_ms = json["double_click_ms"] | 400;
   }
   f.close();
 }
 
 void save_config() {
-  StaticJsonDocument<3072> json;
+  StaticJsonDocument<4096> json;
   json["wifi_ssid"]         = wifi_ssid;
   json["wifi_pass"]         = wifi_pass;
   json["mqtt_enabled"]      = mqtt_enabled;
@@ -260,6 +281,7 @@ void save_config() {
   json["mqtt_port"]         = mqtt_port;
   json["mqtt_user"]         = mqtt_user;
   json["mqtt_pass"]         = mqtt_pass;
+  
   // bouton 1
   json["btn1_mode"]         = btn1_mode;
   json["btn1_topic"]        = btn1_topic;
@@ -272,6 +294,10 @@ void save_config() {
   json["btn1_long_url"]     = btn1_long_url;
   json["btn1_long_mode"]    = btn1_long_mode;
   json["btn1_long_act"]     = btn1_long_act;
+  json["btn1_click_mode"]   = btn1_click_mode;
+  json["btn1_click_topic"]  = btn1_click_topic;
+  json["btn1_click_payload"]= btn1_click_payload;
+  json["btn1_click_url"]    = btn1_click_url;
 
   // bouton 2
   json["btn2_mode"]         = btn2_mode;
@@ -285,6 +311,10 @@ void save_config() {
   json["btn2_long_url"]     = btn2_long_url;
   json["btn2_long_mode"]    = btn2_long_mode;
   json["btn2_long_act"]     = btn2_long_act;
+  json["btn2_click_mode"]   = btn2_click_mode;
+  json["btn2_click_topic"]  = btn2_click_topic;
+  json["btn2_click_payload"]= btn2_click_payload;
+  json["btn2_click_url"]    = btn2_click_url;
 
   // bouton 3
   json["btn3_mode"]         = btn3_mode;
@@ -298,8 +328,13 @@ void save_config() {
   json["btn3_long_url"]     = btn3_long_url;
   json["btn3_long_mode"]    = btn3_long_mode;
   json["btn3_long_act"]     = btn3_long_act;
+  json["btn3_click_mode"]   = btn3_click_mode;
+  json["btn3_click_topic"]  = btn3_click_topic;
+  json["btn3_click_payload"]= btn3_click_payload;
+  json["btn3_click_url"]    = btn3_click_url;
 
   json["long_press_ms"]     = long_press_ms;
+  json["double_click_ms"]   = double_click_ms;
   
   File f = LittleFS.open("/config.json", "w");
   if (f) { serializeJson(json, f); f.close(); }
@@ -356,6 +391,14 @@ void handle_root() {
     ".dot-dis{background:#9ca3af;}" +
     ".ip{font-size:11px;color:#4b5563;margin-top:2px;}" +
     ".recon{font-size:10px;color:#374151;margin-top:1px;}" +
+    ".tgl-container{display:flex;align-items:center;justify-content:space-between;background:#1f2937;padding:12px 16px;border-radius:12px;margin:8px 0;width:100%;box-sizing:border-box;border:1px solid #374151;}" +
+    ".tgl-lbl{font-size:13px;color:#f3f4f6;font-weight:500;text-transform:uppercase;letter-spacing:0.03em;}" +
+    ".sw{position:relative;display:inline-block;width:44px;height:24px;}" +
+    ".sw input{opacity:0;width:0;height:0;}" +
+    ".sl{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#4b5563;transition:.2s;border-radius:24px;}" +
+    ".sl:before{position:absolute;content:'';height:18px;width:18px;left:3px;bottom:3px;background-color:white;transition:.2s;border-radius:50%;}" +
+    "input:checked + .sl{background-color:#ec4899;}" +
+    "input:checked + .sl:before{transform:translateX(20px);}" +
     ".btns{display:flex;flex-direction:column;gap:12px;padding:8px 0 16px;width:100%;}" +
     ".btn{width:100%;padding:22px 0;border-radius:14px;border:none;cursor:pointer;font-size:24px;font-weight:500;letter-spacing:0.02em;display:flex;flex-direction:column;align-items:center;gap:4px;box-sizing:border-box;}" +
     ".btn-icon{font-size:13px;opacity:0.5;}" +
@@ -382,7 +425,13 @@ void handle_root() {
     html += "<div class='recon'>reconnexions : " + String(reconnect_count) + "</div>";
   html += "</div>";
 
-  html += "<div class='card'><div class='btns'>";
+  html += "<div class='card'>";
+  
+  // toggle appui long persistant sur la page
+  html += "<div class='tgl-container'><span class='tgl-lbl'>&#128336; action appui long</span>";
+  html += "<label class='sw'><input type='checkbox' id='tgl_long'><span class='sl'></span></label></div>";
+
+  html += "<div class='btns'>";
   html += "<button class='btn' style='" + color_styles(btn1_color) + "' onclick='pub(1)'>";
   html += "<span class='btn-icon'>" + btn_icon(1) + "</span><span>" + String(btn1_name) + "</span></button>";
   html += "<button class='btn' style='" + color_styles(btn2_color) + "' onclick='pub(2)'>";
@@ -392,7 +441,11 @@ void handle_root() {
   html += "</div>";
   html += "<div class='footer'><a href='/setup'>&#9881; configuration</a></div>";
   html += "</div>";
-  html += "<script>function pub(id){var x=new XMLHttpRequest();x.open('GET','/trigger?id='+id,true);x.send();}</script>";
+  html += "<script>function pub(id){"
+          "var isLong=document.getElementById('tgl_long').checked;"
+          "var type=isLong?'long':'court';"
+          "var x=new XMLHttpRequest();x.open('GET','/trigger?id='+id+'&type='+type,true);x.send();"
+          "}</script>";
   html += "</body></html>";
   server.send(200, "text/html", html);
 }
@@ -405,7 +458,10 @@ String act_option(const char* val, const char* lbl, const char* cur) {
   return "<option value='" + String(val) + "'" + (strcmp(val, cur) == 0 ? " selected" : "") + ">" + String(lbl) + "</option>";
 }
 
-String btn_card(int n, const char* pin_lbl, const char* name, const char* color, const char* mode, const char* topic, const char* payload, const char* url, const char* ltopic, const char* lpayload, const char* lurl, const char* lmode, const char* lact) {
+String btn_card(int n, const char* pin_lbl, const char* name, const char* color, 
+                 const char* mode, const char* topic, const char* payload, const char* url, 
+                 const char* ltopic, const char* lpayload, const char* lurl, const char* lmode, const char* lact,
+                 const char* dmode, const char* dtopic, const char* dpayload, const char* durl) {
   String p   = String(n);
   String dot = "dot" + p;
   String s;
@@ -423,7 +479,7 @@ String btn_card(int n, const char* pin_lbl, const char* name, const char* color,
   s += color_option("orange", "orange", color);
   s += "</select></div></div>";
 
-  // court
+  // action courte
   s += "<div class='row'><label>type d'action (court)</label><select name='b" + p + "_mode' onchange='tglFields(this," + p + ",\"c\")'>";
   s += act_option("mqtt", "mqtt seul", mode);
   s += act_option("http", "http post seul", mode);
@@ -441,7 +497,26 @@ String btn_card(int n, const char* pin_lbl, const char* name, const char* color,
   
   s += "<button type='button' style='margin: 4px 0 12px 0; padding: 6px; font-size:12px; background:#3b82f6; color:#fff; border:none; border-radius:4px; cursor:pointer;' onclick='testaction(" + p + ", \"court\")'>&brvbar;&rArr; tester action courte</button>";
 
-  // long
+  // double clic
+  s += "<div class='long-hdr' style='color:#3b82f6; border-top-color:#c7d7fd;'>&#9898;&#9898; double clic</div>";
+  s += "<div class='row'><label>type d'action (double clic)</label><select name='b" + p + "_dmode' onchange='tglFields(this," + p + ",\"d\")'>";
+  s += act_option("mqtt", "mqtt seul", dmode);
+  s += act_option("http", "http post seul", dmode);
+  s += act_option("both", "mqtt + http post", dmode);
+  s += "</select></div>";
+
+  s += "<div id='b" + p + "_d_mqtt_fields' style='display:" + String(strcmp(dmode,"http")==0?"none":"block") + ";'>";
+  s += "<div class='row'><label>topic double clic</label><input type='text' name='b" + p + "_dt' value='" + String(dtopic) + "' placeholder='laisser vide pour d&eacute;sactiver'></div>";
+  s += "<div class='row'><label>payload double clic</label><input type='text' name='b" + p + "_dp' value='" + String(dpayload) + "'></div>";
+  s += "</div>";
+
+  s += "<div id='b" + p + "_d_http_fields' style='display:" + String(strcmp(dmode,"mqtt")==0?"none":"block") + ";'>";
+  s += "<div class='row'><label>url post double clic</label><input type='text' name='b" + p + "_durl' value='" + String(durl) + "' placeholder='http://...'></div>";
+  s += "</div>";
+
+  s += "<button type='button' style='margin: 4px 0 12px 0; padding: 6px; font-size:12px; background:#10b981; color:#fff; border:none; border-radius:4px; cursor:pointer;' onclick='testaction(" + p + ", \"double\")'>&brvbar;&rArr; tester double clic</button>";
+
+  // appui long
   s += "<div class='long-hdr'>&#128336; appui long</div>";
   s += "<div class='row'><label>mode d'attente</label><select name='b" + p + "_lm'>";
   s += "<option value='both'" + String(strcmp(lmode,"both")==0?" selected":"") + ">court + long (deux actions)</option>";
@@ -499,7 +574,6 @@ void handle_setup() {
 
   html += "<div class='topbar'><a class='back' href='/'>&#8592; retour</a><span class='topbar-title'>configuration</span><span></span></div>";
   
-  // wifi
   html += "<div class='section'><div class='sec-hdr sec-net'>&#9312; r&eacute;seau wifi</div>";
   html += "<div class='row'><label>r&eacute;seau d&eacute;tect&eacute;</label><select name='wifi_ssid' id='ssid_sel'>";
   if (n == 0) {
@@ -515,7 +589,6 @@ void handle_setup() {
   html += "<div class='row'><label>mot de passe wpa2</label><input type='password' name='wifi_pass' id='wp' value='" + String(wifi_pass) + "'></div>";
   html += "</div>";
 
-  // broker mqtt
   html += "<div class='section'><div class='sec-hdr sec-mqtt'>&#9313; broker mqtt</div>";
   html += "<div class='row'><label>activer mqtt</label><select name='mqtt_enabled' id='me' onchange='tglMqtt(this)'>";
   html += "<option value='false'" + String(!mqtt_enabled?" selected":"") + ">d&eacute;sactiv&eacute;</option>";
@@ -531,17 +604,17 @@ void handle_setup() {
   html += "<div class='row'><label>mot de passe</label><input type='password' name='mqtt_pass' id='mpx' value='" + String(mqtt_pass) + "'></div>";
   html += "</div></div></div>";
 
-  // boutons
   html += "<div class='section'><div class='sec-hdr sec-btns'>&#9314; boutons</div>";
-  html += btn_card(1, "d1", btn1_name, btn1_color, btn1_mode, btn1_topic, btn1_payload, btn1_url, btn1_long_topic, btn1_long_payload, btn1_long_url, btn1_long_mode, btn1_long_act);
-  html += btn_card(2, "d2", btn2_name, btn2_color, btn2_mode, btn2_topic, btn2_payload, btn2_url, btn2_long_topic, btn2_long_payload, btn2_long_url, btn2_long_mode, btn2_long_act);
-  html += btn_card(3, "d5", btn3_name, btn3_color, btn3_mode, btn3_topic, btn3_payload, btn3_url, btn3_long_topic, btn3_long_payload, btn3_long_url, btn3_long_mode, btn3_long_act);
+  html += btn_card(1, "d1", btn1_name, btn1_color, btn1_mode, btn1_topic, btn1_payload, btn1_url, btn1_long_topic, btn1_long_payload, btn1_long_url, btn1_long_mode, btn1_long_act, btn1_click_mode, btn1_click_topic, btn1_click_payload, btn1_click_url);
+  html += btn_card(2, "d2", btn2_name, btn2_color, btn2_mode, btn2_topic, btn2_payload, btn2_url, btn2_long_topic, btn2_long_payload, btn2_long_url, btn2_long_mode, btn2_long_act, btn2_click_mode, btn2_click_topic, btn2_click_payload, btn2_click_url);
+  html += btn_card(3, "d5", btn3_name, btn3_color, btn3_mode, btn3_topic, btn3_payload, btn3_url, btn3_long_topic, btn3_long_payload, btn3_long_url, btn3_long_mode, btn3_long_act, btn3_click_mode, btn3_click_topic, btn3_click_payload, btn3_click_url);
   html += "</div>";
 
-  // robustesse
-  html += "<div class='section'><div class='sec-hdr sec-rob'>&#9315; robustesse r&eacute;seau</div>";
-  html += "<div class='row'><label>seuil appui long (ms)</label><input type='number' name='long_ms' id='lms' value='" + String(long_press_ms) + "' min='300' max='3000'></div>";
-  html += "</div>";
+  html += "<div class='section'><div class='sec-hdr sec-rob'>&#9315; temporisations temporelles</div>";
+  html += "<div class='grid2'>";
+  html += "<div class='row'><label>appui long (ms)</label><input type='number' name='long_ms' id='lms' value='" + String(long_press_ms) + "' min='300' max='3000'></div>";
+  html += "<div class='row'><label>double clic (ms)</label><input type='number' name='double_ms' id='dclms' value='" + String(double_click_ms) + "' min='150' max='1000'></div>";
+  html += "</div></div>";
 
   if (!is_ap_mode) {
     html += "<div class='section'><div class='sec-hdr sec-ota'>&#9316; mise &agrave; jour firmware</div>";
@@ -617,6 +690,7 @@ void handle_setup() {
     "var inputs=document.querySelectorAll('input, select');"
     "inputs.forEach(function(i){if(i.name&&!obj.hasOwnProperty(i.name))obj[i.name]=i.value;});"
     "obj.long_press_ms=parseInt(document.getElementById('lms').value)||800;"
+    "obj.double_click_ms=parseInt(document.getElementById('dclms').value)||400;"
     "var x=new XMLHttpRequest();x.open('POST','/config',true);x.setRequestHeader('Content-Type','application/json');"
     "x.onload=function(){"
     "document.body.innerHTML='<div style=\"text-align:center;padding-top:100px;font-family:sans-serif;color:#111;\"><h2>configuration enregistr&eacute;e</h2><p>red&eacute;marrage du bo&icirc;tier en cours...</p></div>';"
@@ -638,7 +712,7 @@ void handle_config_save() {
     return;
   }
   String body = server.arg("plain");
-  StaticJsonDocument<3072> json;
+  StaticJsonDocument<4096> json;
   if (deserializeJson(json, body) == DeserializationError::Ok) {
     strlcpy(wifi_ssid,           json["wifi_ssid"]           | "",              sizeof(wifi_ssid));
     strlcpy(wifi_pass,           json["wifi_pass"]           | "",              sizeof(wifi_pass));
@@ -647,6 +721,7 @@ void handle_config_save() {
     strlcpy(mqtt_port,           json["mqtt_port"]           | "1883",          sizeof(mqtt_port));
     strlcpy(mqtt_user,           json["mqtt_user"]           | "",              sizeof(mqtt_user));
     strlcpy(mqtt_pass,           json["mqtt_pass"]           | "",              sizeof(mqtt_pass));
+    
     // boutons 1
     strlcpy(btn1_mode,           json["b1_mode"]             | "mqtt",          sizeof(btn1_mode));
     strlcpy(btn1_topic,          json["b1_t"]                | "",              sizeof(btn1_topic));
@@ -659,6 +734,11 @@ void handle_config_save() {
     strlcpy(btn1_long_url,       json["b1_lurl"]             | "",              sizeof(btn1_long_url));
     strlcpy(btn1_long_mode,      json["b1_lm"]               | "both",          sizeof(btn1_long_mode));
     strlcpy(btn1_long_act,       json["b1_lact"]             | "mqtt",          sizeof(btn1_long_act));
+    strlcpy(btn1_click_mode,     json["b1_dmode"]            | "mqtt",          sizeof(btn1_click_mode));
+    strlcpy(btn1_click_topic,    json["b1_dt"]               | "",              sizeof(btn1_click_topic));
+    strlcpy(btn1_click_payload,  json["b1_dp"]               | "",              sizeof(btn1_click_payload));
+    strlcpy(btn1_click_url,      json["b1_durl"]             | "",              sizeof(btn1_click_url));
+
     // boutons 2
     strlcpy(btn2_mode,           json["b2_mode"]             | "mqtt",          sizeof(btn2_mode));
     strlcpy(btn2_topic,          json["b2_t"]                | "",              sizeof(btn2_topic));
@@ -671,6 +751,11 @@ void handle_config_save() {
     strlcpy(btn2_long_url,       json["b2_lurl"]             | "",              sizeof(btn2_long_url));
     strlcpy(btn2_long_mode,      json["b2_lm"]               | "both",          sizeof(btn2_long_mode));
     strlcpy(btn2_long_act,       json["b2_lact"]             | "mqtt",          sizeof(btn2_long_act));
+    strlcpy(btn2_click_mode,     json["b2_dmode"]            | "mqtt",          sizeof(btn2_click_mode));
+    strlcpy(btn2_click_topic,    json["b2_dt"]               | "",              sizeof(btn2_click_topic));
+    strlcpy(btn2_click_payload,  json["b2_dp"]               | "",              sizeof(btn2_click_payload));
+    strlcpy(btn2_click_url,      json["b2_durl"]             | "",              sizeof(btn2_click_url));
+
     // boutons 3
     strlcpy(btn3_mode,           json["b3_mode"]             | "mqtt",          sizeof(btn3_mode));
     strlcpy(btn3_topic,          json["b3_t"]                | "",              sizeof(btn3_topic));
@@ -683,8 +768,13 @@ void handle_config_save() {
     strlcpy(btn3_long_url,       json["b3_lurl"]             | "",              sizeof(btn3_long_url));
     strlcpy(btn3_long_mode,      json["b3_lm"]               | "both",          sizeof(btn3_long_mode));
     strlcpy(btn3_long_act,       json["b3_lact"]             | "mqtt",          sizeof(btn3_long_act));
+    strlcpy(btn3_click_mode,     json["b3_dmode"]            | "mqtt",          sizeof(btn3_click_mode));
+    strlcpy(btn3_click_topic,    json["b3_dt"]               | "",              sizeof(btn3_click_topic));
+    strlcpy(btn3_click_payload,  json["b3_dp"]               | "",              sizeof(btn3_click_payload));
+    strlcpy(btn3_click_url,      json["b3_durl"]             | "",              sizeof(btn3_click_url));
     
-    long_press_ms = json["long_press_ms"] | 800;
+    long_press_ms   = json["long_press_ms"]   | 800;
+    double_click_ms = json["double_click_ms"] | 400;
     save_config();
     server.send(200, "application/json", "{\"status\":\"ok\"}");
     delay(500);
@@ -697,10 +787,18 @@ void handle_config_save() {
 void handle_trigger() {
   if (!server.hasArg("id")) { server.send(400, "text/plain", "missing id"); return; }
   int id = server.arg("id").toInt();
+  String req_type = server.hasArg("type") ? server.arg("type") : "court";
   bool ok = false;
-  if (id == 1) ok = execute_action(btn1_mode, btn1_topic, btn1_payload, btn1_url, "web-btn1");
-  if (id == 2) ok = execute_action(btn2_mode, btn2_topic, btn2_payload, btn2_url, "web-btn2");
-  if (id == 3) ok = execute_action(btn3_mode, btn3_topic, btn3_payload, btn3_url, "web-btn3");
+  
+  if (req_type == "long") {
+    if (id == 1) ok = execute_action(btn1_long_act, btn1_long_topic, btn1_long_payload, btn1_long_url, "web-btn1-long");
+    if (id == 2) ok = execute_action(btn2_long_act, btn2_long_topic, btn2_long_payload, btn2_long_url, "web-btn2-long");
+    if (id == 3) ok = execute_action(btn3_long_act, btn3_long_topic, btn3_long_payload, btn3_long_url, "web-btn3-long");
+  } else {
+    if (id == 1) ok = execute_action(btn1_mode, btn1_topic, btn1_payload, btn1_url, "web-btn1-court");
+    if (id == 2) ok = execute_action(btn2_mode, btn2_topic, btn2_payload, btn2_url, "web-btn2-court");
+    if (id == 3) ok = execute_action(btn3_mode, btn3_topic, btn3_payload, btn3_url, "web-btn3-court");
+  }
   server.send(200, "text/plain", ok ? "ok" : "error");
 }
 
@@ -721,6 +819,10 @@ void handle_test_action() {
     if (id == 1) ok = execute_action(btn1_long_act, btn1_long_topic, btn1_long_payload, btn1_long_url, "test-b1-long");
     if (id == 2) ok = execute_action(btn2_long_act, btn2_long_topic, btn2_long_payload, btn2_long_url, "test-b2-long");
     if (id == 3) ok = execute_action(btn3_long_act, btn3_long_topic, btn3_long_payload, btn3_long_url, "test-b3-long");
+  } else if (type == "double") {
+    if (id == 1) ok = execute_action(btn1_click_mode, btn1_click_topic, btn1_click_payload, btn1_click_url, "test-b1-double");
+    if (id == 2) ok = execute_action(btn2_click_mode, btn2_click_topic, btn2_click_payload, btn2_click_url, "test-b2-double");
+    if (id == 3) ok = execute_action(btn3_click_mode, btn3_click_topic, btn3_click_payload, btn3_click_url, "test-b3-double");
   }
   server.send(200, "text/plain", ok ? "ok" : "error");
 }
@@ -799,7 +901,6 @@ void loop() {
   unsigned long now = millis();
   update_led();
 
-  // boucle de gestion mqtt (uniquement si actif globalement et hors mode ap)
   if (mqtt_enabled && !is_ap_mode) {
     if (WiFi.status() == WL_CONNECTED) {
       if (!mqtt_client.connected()) {
@@ -851,102 +952,111 @@ void loop() {
   bool r2 = digitalRead(btn2_pin);
   bool r3 = digitalRead(btn3_pin);
 
-  // ---- filtrage & debounce bouton 1 ----
-  if (r1 != last_raw_btn1_state) {
-    last_debounce_time1 = now;
-    last_raw_btn1_state = r1;
-  }
+  // ---- machine d'etats bouton 1 ----
+  if (r1 != last_raw_btn1_state) { last_debounce_time1 = now; last_raw_btn1_state = r1; }
   if ((now - last_debounce_time1) > debounce_delay) {
     if (r1 != debounced_btn1_state) {
       debounced_btn1_state = r1;
       if (debounced_btn1_state == LOW) {
-        pressed1 = true;
-        long_fired1 = false;
-        press_start1 = now;
-        if (strcmp(btn1_long_mode, "long") != 0) {
-          Serial.println("[action] d1 court");
-          execute_action(btn1_mode, btn1_topic, btn1_payload, btn1_url, "btn1-court");
-        }
+        pressed1 = true; long_fired1 = false; press_start1 = now;
       } else {
-        if (pressed1 && !long_fired1 && strcmp(btn1_long_mode, "long") == 0) {
-          Serial.println("[action] d1 court (mode long-seul, relachement rapide)");
-          execute_action(btn1_mode, btn1_topic, btn1_payload, btn1_url, "btn1-court");
+        if (pressed1 && !long_fired1) {
+          click_count1++;
+          release_time1 = now;
         }
         pressed1 = false;
       }
     }
   }
-  if (pressed1 && !long_fired1) {
-    if ((now - press_start1) >= long_press_ms) {
-      long_fired1 = true;
-      Serial.println("[action] d1 long");
-      execute_action(btn1_long_act, btn1_long_topic, btn1_long_payload, btn1_long_url, "btn1-long");
+  if (pressed1 && !long_fired1 && (now - press_start1 >= long_press_ms)) {
+    long_fired1 = true; click_count1 = 0;
+    Serial.println("[action] d1 long");
+    execute_action(btn1_long_act, btn1_long_topic, btn1_long_payload, btn1_long_url, "btn1-long");
+  }
+  if (!pressed1 && click_count1 > 0 && (now - release_time1 >= double_click_ms)) {
+    if (click_count1 >= 2) {
+      if (strlen(btn1_click_topic) > 0 || strlen(btn1_click_url) > 0) {
+        Serial.println("[action] d1 double clic");
+        execute_action(btn1_click_mode, btn1_click_topic, btn1_click_payload, btn1_click_url, "btn1-double");
+      }
+    } else {
+      if (strcmp(btn1_long_mode, "long") != 0 || (release_time1 - press_start1 < long_press_ms)) {
+        Serial.println("[action] d1 court");
+        execute_action(btn1_mode, btn1_topic, btn1_payload, btn1_url, "btn1-court");
+      }
     }
+    click_count1 = 0;
   }
 
-  // ---- filtrage & debounce bouton 2 ----
-  if (r2 != last_raw_btn2_state) {
-    last_debounce_time2 = now;
-    last_raw_btn2_state = r2;
-  }
+  // ---- machine d'etats bouton 2 ----
+  if (r2 != last_raw_btn2_state) { last_debounce_time2 = now; last_raw_btn2_state = r2; }
   if ((now - last_debounce_time2) > debounce_delay) {
     if (r2 != debounced_btn2_state) {
       debounced_btn2_state = r2;
       if (debounced_btn2_state == LOW) {
-        pressed2 = true;
-        long_fired2 = false;
-        press_start2 = now;
-        if (strcmp(btn2_long_mode, "long") != 0) {
-          Serial.println("[action] d2 court");
-          execute_action(btn2_mode, btn2_topic, btn2_payload, btn2_url, "btn2-court");
-        }
+        pressed2 = true; long_fired2 = false; press_start2 = now;
       } else {
-        if (pressed2 && !long_fired2 && strcmp(btn2_long_mode, "long") == 0) {
-          Serial.println("[action] d2 court (mode long-seul, relachement rapide)");
-          execute_action(btn2_mode, btn2_topic, btn2_payload, btn2_url, "btn2-court");
+        if (pressed2 && !long_fired2) {
+          click_count2++;
+          release_time2 = now;
         }
         pressed2 = false;
       }
     }
   }
-  if (pressed2 && !long_fired2) {
-    if ((now - press_start2) >= long_press_ms) {
-      long_fired2 = true;
-      Serial.println("[action] d2 long");
-      execute_action(btn2_long_act, btn2_long_topic, btn2_long_payload, btn2_long_url, "btn2-long");
+  if (pressed2 && !long_fired2 && (now - press_start2 >= long_press_ms)) {
+    long_fired2 = true; click_count2 = 0;
+    Serial.println("[action] d2 long");
+    execute_action(btn2_long_act, btn2_long_topic, btn2_long_payload, btn2_long_url, "btn2-long");
+  }
+  if (!pressed2 && click_count2 > 0 && (now - release_time2 >= double_click_ms)) {
+    if (click_count2 >= 2) {
+      if (strlen(btn2_click_topic) > 0 || strlen(btn2_click_url) > 0) {
+        Serial.println("[action] d2 double clic");
+        execute_action(btn2_click_mode, btn2_click_topic, btn2_click_payload, btn2_click_url, "btn2-double");
+      }
+    } else {
+      if (strcmp(btn2_long_mode, "long") != 0 || (release_time2 - press_start2 < long_press_ms)) {
+        Serial.println("[action] d2 court");
+        execute_action(btn2_mode, btn2_topic, btn2_payload, btn2_url, "btn2-court");
+      }
     }
+    click_count2 = 0;
   }
 
-  // ---- filtrage & debounce bouton 3 ----
-  if (r3 != last_raw_btn3_state) {
-    last_debounce_time3 = now;
-    last_raw_btn3_state = r3;
-  }
+  // ---- machine d'etats bouton 3 ----
+  if (r3 != last_raw_btn3_state) { last_debounce_time3 = now; last_raw_btn3_state = r3; }
   if ((now - last_debounce_time3) > debounce_delay) {
     if (r3 != debounced_btn3_state) {
       debounced_btn3_state = r3;
       if (debounced_btn3_state == LOW) {
-        pressed3 = true;
-        long_fired3 = false;
-        press_start3 = now;
-        if (strcmp(btn3_long_mode, "long") != 0) {
-          Serial.println("[action] d5 court");
-          execute_action(btn3_mode, btn3_topic, btn3_payload, btn3_url, "btn3-court");
-        }
+        pressed3 = true; long_fired3 = false; press_start3 = now;
       } else {
-        if (pressed3 && !long_fired3 && strcmp(btn3_long_mode, "long") == 0) {
-          Serial.println("[action] d5 court (mode long-seul, relachement rapide)");
-          execute_action(btn3_mode, btn3_topic, btn3_payload, btn3_url, "btn3-court");
+        if (pressed3 && !long_fired3) {
+          click_count3++;
+          release_time3 = now;
         }
         pressed3 = false;
       }
     }
   }
-  if (pressed3 && !long_fired3) {
-    if ((now - press_start3) >= long_press_ms) {
-      long_fired3 = true;
-      Serial.println("[action] d5 long");
-      execute_action(btn3_long_act, btn3_long_topic, btn3_long_payload, btn3_long_url, "btn3-long");
+  if (pressed3 && !long_fired3 && (now - press_start3 >= long_press_ms)) {
+    long_fired3 = true; click_count3 = 0;
+    Serial.println("[action] d5 long");
+    execute_action(btn3_long_act, btn3_long_topic, btn3_long_payload, btn3_long_url, "btn3-long");
+  }
+  if (!pressed3 && click_count3 > 0 && (now - release_time3 >= double_click_ms)) {
+    if (click_count3 >= 2) {
+      if (strlen(btn3_click_topic) > 0 || strlen(btn3_click_url) > 0) {
+        Serial.println("[action] d5 double clic");
+        execute_action(btn3_click_mode, btn3_click_topic, btn3_click_payload, btn3_click_url, "btn3-double");
+      }
+    } else {
+      if (strcmp(btn3_long_mode, "long") != 0 || (release_time3 - press_start3 < long_press_ms)) {
+        Serial.println("[action] d5 court");
+        execute_action(btn3_mode, btn3_topic, btn3_payload, btn3_url, "btn3-court");
+      }
     }
+    click_count3 = 0;
   }
 }
