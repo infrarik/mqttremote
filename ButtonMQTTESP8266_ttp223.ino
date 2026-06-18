@@ -3,7 +3,6 @@
 //
 // Code updated with modified inputs and delays
 //
-
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
@@ -534,33 +533,21 @@ String btn_card(int n, const char* name, const char* color,
   return s;
 }
 
-// export de la configuration actuelle
 void handleBackup() {
   File configFile = LittleFS.open("/config.json", "r");
   if (!configFile) {
-    server.send(500, "text/plain", "erreur config introuvable");
+    server.send(500, "text/plain", "erreur lecture config");
     return;
   }
-  server.sendHeader("Content-Disposition", "attachment; filename=config_esp.json");
   server.streamFile(configFile, "application/json");
   configFile.close();
 }
 
-// import d'une nouvelle configuration
 void handleRestore() {
-  HTTPUpload& upload = server.upload();
-  if (upload.status == UPLOAD_FILE_START) {
-    LittleFS.remove("/config.json");
-    File file = LittleFS.open("/config.json", "w");
-  } else if (upload.status == UPLOAD_FILE_WRITE) {
-    File file = LittleFS.open("/config.json", "a");
-    if (file) file.write(upload.buf, upload.currentSize);
-    file.close();
-  } else if (upload.status == UPLOAD_FILE_END) {
-    server.send(200, "text/plain", "restauration reussie, redemarrage...");
-    delay(1000);
-    ESP.restart();
-  }
+  // le code de traitement est similaire à ton upload de firmware ota, 
+  // mais tu écris le contenu dans "/config.json" au lieu de le flasher.
+  // après l'écriture, tu redémarres l'esp pour charger la nouvelle config.
+  ESP.restart();
 }
 
 
@@ -641,17 +628,7 @@ void handle_setup() {
     "<div class='row'><label>fen&ecirc;tre double clic (ms)</label><input type='text' name='t_double' value='" + String(double_click_ms) + "'></div></div>" +
     "</div>";
 
-// section sauvegarde / restauration
-  html += "<div class='section'><div class='sec-hdr'>&#128190; configuration</div>";
-  html += "  <div class='row' style='display:flex; gap:10px;'>";
-  html += "    <a href='/backup' class='tst-btn' style='background:#059669; text-align:center; padding:10px; text-decoration:none;'>sauvegarder (json)</a>";
-  html += "  </div>";
-  html += "  <form method='POST' action='/restore' enctype='multipart/form-data'>";
-  html += "    <div class='row'><label>restaurer une configuration</label><input type='file' name='restore'></div>";
-  html += "    <button type='submit' class='tst-btn' style='background:#7c3aed;'>charger fichier et red&eacute;marrer</button>";
-  html += "  </form>";
-  html += "</div>";
-  
+
 // section ota
   html += "<div class='section'>";
   html += "  <div class='sec-hdr sec-ota'>&#128225; t&eacute;l&eacute;chargement firmware ota</div>";
@@ -853,12 +830,10 @@ void setup() {
     mqtt_client.setServer(mqtt_server, atoi(mqtt_port));
   }
 
-  ("/", HTTP_GET, handle_root);
+  server.on("/", HTTP_GET, handle_root);
   server.on("/setup", HTTP_GET, handle_setup);
   server.on("/save", HTTP_POST, handle_save);
   server.on("/trigger", HTTP_GET, handle_trigger);
-  server.on("/backup", HTTP_GET, handleBackup);
-  server.on("/restore", HTTP_POST, [](){ handleRestore(); }, handleRestore);
 
   httpupdater.setup(&server);
   server.begin();
