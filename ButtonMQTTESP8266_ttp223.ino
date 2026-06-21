@@ -27,23 +27,25 @@ char mqtt_user[40]  = "";
 char mqtt_pass[40]  = "";
 
 // bouton 1
-char btn1_mode[10]         = "mqtt";   // "mqtt", "http", "both"
+char btn1_type[10]         = "ttp";      // "ttp" ou "physique"
+char btn1_mode[10]         = "mqtt";     // "mqtt", "http", "both"
 char btn1_topic[60]        = "esp/btn1/topic";
 char btn1_payload[100]     = "message_btn1";
 char btn1_url[150]         = "";
 char btn1_name[20]         = "up";
 char btn1_color[10]        = "green";
-char btn1_long_mode[6]     = "both";   // "both" = court+long, "long" = long seul
-char btn1_long_act[10]     = "mqtt";   // "mqtt", "http", "both"
+char btn1_long_mode[6]     = "both";     // "both" = court+long, "long" = long seul
+char btn1_long_act[10]     = "mqtt";     // "mqtt", "http", "both"
 char btn1_long_topic[60]   = "";
 char btn1_long_payload[100]= "";
 char btn1_long_url[150]    = "";
-char btn1_click_mode[10]   = "mqtt";   // double clic
+char btn1_click_mode[10]   = "mqtt";     // double clic
 char btn1_click_topic[60]  = "";
 char btn1_click_payload[100]= "";
 char btn1_click_url[150]   = "";
 
 // bouton 2
+char btn2_type[10]         = "ttp";
 char btn2_mode[10]         = "mqtt";
 char btn2_topic[60]        = "esp/btn2/topic";
 char btn2_payload[100]     = "message_btn2";
@@ -61,6 +63,7 @@ char btn2_click_payload[100]= "";
 char btn2_click_url[150]   = "";
 
 // bouton 3
+char btn3_type[10]         = "ttp";
 char btn3_mode[10]         = "mqtt";
 char btn3_topic[60]        = "esp/btn3/topic";
 char btn3_payload[100]     = "message_btn3";
@@ -93,7 +96,7 @@ unsigned long last_led_toggle    = 0;
 bool          led_state          = false;
 
 // ------------------------------------------------------------------ debounce & etats filtres
-bool last_raw_btn1_state = LOW;   // ttp223 repos=LOW
+bool last_raw_btn1_state = LOW;
 bool last_raw_btn2_state = LOW;
 bool last_raw_btn3_state = LOW;
 bool debounced_btn1_state = LOW;
@@ -214,6 +217,7 @@ void load_config() {
     strlcpy(mqtt_pass,           json["mqtt_pass"]           | "",              sizeof(mqtt_pass));
     
     // bouton 1
+    strlcpy(btn1_type,           json["btn1_type"]           | "ttp",           sizeof(btn1_type));
     strlcpy(btn1_mode,           json["btn1_mode"]           | "mqtt",          sizeof(btn1_mode));
     strlcpy(btn1_topic,          json["btn1_topic"]          | "esp/btn1/topic",sizeof(btn1_topic));
     strlcpy(btn1_payload,        json["btn1_payload"]        | "message_btn1",  sizeof(btn1_payload));
@@ -231,6 +235,7 @@ void load_config() {
     strlcpy(btn1_click_url,      json["btn1_click_url"]      | "",              sizeof(btn1_click_url));
     
     // bouton 2
+    strlcpy(btn2_type,           json["btn2_type"]           | "ttp",           sizeof(btn2_type));
     strlcpy(btn2_mode,           json["btn2_mode"]           | "mqtt",          sizeof(btn2_mode));
     strlcpy(btn2_topic,          json["btn2_topic"]          | "esp/btn2/topic",sizeof(btn2_topic));
     strlcpy(btn2_payload,        json["btn2_payload"]        | "message_btn2",  sizeof(btn2_payload));
@@ -248,6 +253,7 @@ void load_config() {
     strlcpy(btn2_click_url,      json["btn2_click_url"]      | "",              sizeof(btn2_click_url));
     
     // bouton 3
+    strlcpy(btn3_type,           json["btn3_type"]           | "ttp",           sizeof(btn3_type));
     strlcpy(btn3_mode,           json["btn3_mode"]           | "mqtt",          sizeof(btn3_mode));
     strlcpy(btn3_topic,          json["btn3_topic"]          | "esp/btn3/topic",sizeof(btn3_topic));
     strlcpy(btn3_payload,        json["btn3_payload"]        | "message_btn3",  sizeof(btn3_payload));
@@ -285,6 +291,7 @@ void save_config() {
   json["mqtt_pass"]         = mqtt_pass;
   
   // bouton 1
+  json["btn1_type"]         = btn1_type;
   json["btn1_mode"]         = btn1_mode;
   json["btn1_topic"]        = btn1_topic;
   json["btn1_payload"]      = btn1_payload;
@@ -302,6 +309,7 @@ void save_config() {
   json["btn1_click_url"]    = btn1_click_url;
   
   // bouton 2
+  json["btn2_type"]         = btn2_type;
   json["btn2_mode"]         = btn2_mode;
   json["btn2_topic"]        = btn2_topic;
   json["btn2_payload"]      = btn2_payload;
@@ -319,6 +327,7 @@ void save_config() {
   json["btn2_click_url"]    = btn2_click_url;
   
   // bouton 3
+  json["btn3_type"]         = btn3_type;
   json["btn3_mode"]         = btn3_mode;
   json["btn3_topic"]        = btn3_topic;
   json["btn3_payload"]      = btn3_payload;
@@ -475,7 +484,7 @@ String gpio_select(const char* name, int cur) {
   return s;
 }
 
-String btn_card(int n, int gpio_val, const char* name, const char* color, 
+String btn_card(int n, int gpio_val, const char* type, const char* name, const char* color, 
                  const char* mode, const char* topic, const char* payload, const char* url, 
                  const char* ltopic, const char* lpayload, const char* lurl, const char* lmode, const char* lact,
                  const char* dmode, const char* dtopic, const char* dpayload, const char* durl) {
@@ -494,6 +503,12 @@ String btn_card(int n, int gpio_val, const char* name, const char* color,
   s += color_option("red",    "rouge alerte",color);
   s += color_option("blue",   "bleu tech",  color);
   s += color_option("orange", "orange vif", color);
+  s += "</select></div>";
+
+  // --- NOUVEAU : sélection du type de bouton ---
+  s += "<div class='row'><label>type de bouton</label><select name='b" + p + "_type'>";
+  s += "<option value='ttp'" + String(strcmp(type, "ttp")==0?" selected":"") + ">TTP223 (actif HIGH)</option>";
+  s += "<option value='physique'" + String(strcmp(type, "physique")==0?" selected":"") + ">physique (pull-up, actif LOW)</option>";
   s += "</select></div>";
 
   s += "<div class='row'><label>broche gpio</label>" + gpio_select(("b" + p + "_gpio").c_str(), gpio_val) + "</div>";
@@ -663,17 +678,17 @@ void handle_setup() {
     "<div class='section'><div class='sec-hdr sec-btns'>&#9899; param&eacute;trage des boutons tactiles</div>"
   );
   // Bouton 1
-  server.sendContent(btn_card(1, btn1_pin, btn1_name, btn1_color,
+  server.sendContent(btn_card(1, btn1_pin, btn1_type, btn1_name, btn1_color,
                               btn1_mode, btn1_topic, btn1_payload, btn1_url,
                               btn1_long_topic, btn1_long_payload, btn1_long_url, btn1_long_mode, btn1_long_act,
                               btn1_click_mode, btn1_click_topic, btn1_click_payload, btn1_click_url));
   // Bouton 2
-  server.sendContent(btn_card(2, btn2_pin, btn2_name, btn2_color,
+  server.sendContent(btn_card(2, btn2_pin, btn2_type, btn2_name, btn2_color,
                               btn2_mode, btn2_topic, btn2_payload, btn2_url,
                               btn2_long_topic, btn2_long_payload, btn2_long_url, btn2_long_mode, btn2_long_act,
                               btn2_click_mode, btn2_click_topic, btn2_click_payload, btn2_click_url));
   // Bouton 3
-  server.sendContent(btn_card(3, btn3_pin, btn3_name, btn3_color,
+  server.sendContent(btn_card(3, btn3_pin, btn3_type, btn3_name, btn3_color,
                               btn3_mode, btn3_topic, btn3_payload, btn3_url,
                               btn3_long_topic, btn3_long_payload, btn3_long_url, btn3_long_mode, btn3_long_act,
                               btn3_click_mode, btn3_click_topic, btn3_click_payload, btn3_click_url));
@@ -772,6 +787,7 @@ void handle_save() {
   strlcpy(mqtt_pass,   server.arg("mq_pwd").c_str(), sizeof(mqtt_pass));
 
   // bouton 1
+  strlcpy(btn1_type,          server.arg("b1_type").c_str(),  sizeof(btn1_type));
   strlcpy(btn1_name,          server.arg("b1_name").c_str(),  sizeof(btn1_name));
   strlcpy(btn1_color,         server.arg("b1_color").c_str(), sizeof(btn1_color));
   strlcpy(btn1_mode,          server.arg("b1_mode").c_str(),  sizeof(btn1_mode));
@@ -789,6 +805,7 @@ void handle_save() {
   strlcpy(btn1_click_url,     server.arg("b1_durl").c_str(),  sizeof(btn1_click_url));
 
   // bouton 2
+  strlcpy(btn2_type,          server.arg("b2_type").c_str(),  sizeof(btn2_type));
   strlcpy(btn2_name,          server.arg("b2_name").c_str(),  sizeof(btn2_name));
   strlcpy(btn2_color,         server.arg("b2_color").c_str(), sizeof(btn2_color));
   strlcpy(btn2_mode,          server.arg("b2_mode").c_str(),  sizeof(btn2_mode));
@@ -806,6 +823,7 @@ void handle_save() {
   strlcpy(btn2_click_url,     server.arg("b2_durl").c_str(),  sizeof(btn2_click_url));
 
   // bouton 3
+  strlcpy(btn3_type,          server.arg("b3_type").c_str(),  sizeof(btn3_type));
   strlcpy(btn3_name,          server.arg("b3_name").c_str(),  sizeof(btn3_name));
   strlcpy(btn3_color,         server.arg("b3_color").c_str(), sizeof(btn3_color));
   strlcpy(btn3_mode,          server.arg("b3_mode").c_str(),  sizeof(btn3_mode));
@@ -909,10 +927,29 @@ void setup() {
 
   load_config();
 
-  // GPIO configures apres load_config pour utiliser les valeurs lues
-  pinMode(btn1_pin, INPUT);
-  pinMode(btn2_pin, INPUT);
-  pinMode(btn3_pin, INPUT);
+  // Configuration des broches en fonction du type
+  if (strcmp(btn1_type, "physique") == 0)
+    pinMode(btn1_pin, INPUT_PULLUP);
+  else
+    pinMode(btn1_pin, INPUT);
+
+  if (strcmp(btn2_type, "physique") == 0)
+    pinMode(btn2_pin, INPUT_PULLUP);
+  else
+    pinMode(btn2_pin, INPUT);
+
+  if (strcmp(btn3_type, "physique") == 0)
+    pinMode(btn3_pin, INPUT_PULLUP);
+  else
+    pinMode(btn3_pin, INPUT);
+
+  // Lecture initiale pour les états de repos
+  last_raw_btn1_state = digitalRead(btn1_pin);
+  last_raw_btn2_state = digitalRead(btn2_pin);
+  last_raw_btn3_state = digitalRead(btn3_pin);
+  debounced_btn1_state = last_raw_btn1_state;
+  debounced_btn2_state = last_raw_btn2_state;
+  debounced_btn3_state = last_raw_btn3_state;
 
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
@@ -963,14 +1000,19 @@ void loop() {
   bool r2 = digitalRead(btn2_pin);
   bool r3 = digitalRead(btn3_pin);
 
+  // Déterminer le niveau actif pour chaque bouton
+  bool active1 = (strcmp(btn1_type, "ttp") == 0); // true = HIGH actif
+  bool active2 = (strcmp(btn2_type, "ttp") == 0);
+  bool active3 = (strcmp(btn3_type, "ttp") == 0);
+
   // ---- machine d'etats bouton 1 ----
   if (r1 != last_raw_btn1_state) { last_debounce_time1 = now; last_raw_btn1_state = r1; }
   if ((now - last_debounce_time1) > debounce_delay) {
     if (r1 != debounced_btn1_state) {
       debounced_btn1_state = r1;
-      if (debounced_btn1_state == HIGH) {
+      if (debounced_btn1_state == (active1 ? HIGH : LOW)) { // appui
         pressed1 = true; long_fired1 = false; press_start1 = now;
-      } else {
+      } else { // relâchement
         if (pressed1 && !long_fired1) {
           click_count1++;
           release_time1 = now;
@@ -981,25 +1023,25 @@ void loop() {
   }
   if (pressed1 && !long_fired1 && (now - press_start1 >= long_press_ms)) {
     long_fired1 = true; click_count1 = 0;
-    Serial.println("[action] d1 long");
+    Serial.println("[action] btn1 long");
     execute_action(btn1_long_act, btn1_long_topic, btn1_long_payload, btn1_long_url, "btn1-long");
   }
   if (!pressed1 && click_count1 > 0 && (now - release_time1 >= double_click_ms)) {
     if (click_count1 >= 2) {
       if (strlen(btn1_click_topic) > 0 || strlen(btn1_click_url) > 0) {
-        Serial.println("[action] d1 double");
+        Serial.println("[action] btn1 double");
         execute_action(btn1_click_mode, btn1_click_topic, btn1_click_payload, btn1_click_url, "btn1-double");
       } else {
-        Serial.println("[action] d1 double ignore, court x2");
+        Serial.println("[action] btn1 double ignore, court x2");
         execute_action(btn1_mode, btn1_topic, btn1_payload, btn1_url, "btn1-court");
         execute_action(btn1_mode, btn1_topic, btn1_payload, btn1_url, "btn1-court");
       }
     } else {
       if (strcmp(btn1_long_mode, "long") == 0) {
-        Serial.println("[action] d1 court seul");
+        Serial.println("[action] btn1 court seul");
         execute_action(btn1_mode, btn1_topic, btn1_payload, btn1_url, "btn1-court-seul");
       } else {
-        Serial.println("[action] d1 court");
+        Serial.println("[action] btn1 court");
         execute_action(btn1_mode, btn1_topic, btn1_payload, btn1_url, "btn1-court");
       }
     }
@@ -1011,7 +1053,7 @@ void loop() {
   if ((now - last_debounce_time2) > debounce_delay) {
     if (r2 != debounced_btn2_state) {
       debounced_btn2_state = r2;
-      if (debounced_btn2_state == HIGH) {
+      if (debounced_btn2_state == (active2 ? HIGH : LOW)) {
         pressed2 = true; long_fired2 = false; press_start2 = now;
       } else {
         if (pressed2 && !long_fired2) {
@@ -1024,25 +1066,25 @@ void loop() {
   }
   if (pressed2 && !long_fired2 && (now - press_start2 >= long_press_ms)) {
     long_fired2 = true; click_count2 = 0;
-    Serial.println("[action] my long");
+    Serial.println("[action] btn2 long");
     execute_action(btn2_long_act, btn2_long_topic, btn2_long_payload, btn2_long_url, "btn2-long");
   }
   if (!pressed2 && click_count2 > 0 && (now - release_time2 >= double_click_ms)) {
     if (click_count2 >= 2) {
       if (strlen(btn2_click_topic) > 0 || strlen(btn2_click_url) > 0) {
-        Serial.println("[action] my double");
+        Serial.println("[action] btn2 double");
         execute_action(btn2_click_mode, btn2_click_topic, btn2_click_payload, btn2_click_url, "btn2-double");
       } else {
-        Serial.println("[action] my double ignore, court x2");
+        Serial.println("[action] btn2 double ignore, court x2");
         execute_action(btn2_mode, btn2_topic, btn2_payload, btn2_url, "btn2-court");
         execute_action(btn2_mode, btn2_topic, btn2_payload, btn2_url, "btn2-court");
       }
     } else {
       if (strcmp(btn2_long_mode, "long") == 0) {
-        Serial.println("[action] my court seul");
+        Serial.println("[action] btn2 court seul");
         execute_action(btn2_mode, btn2_topic, btn2_payload, btn2_url, "btn2-court-seul");
       } else {
-        Serial.println("[action] my court");
+        Serial.println("[action] btn2 court");
         execute_action(btn2_mode, btn2_topic, btn2_payload, btn2_url, "btn2-court");
       }
     }
@@ -1054,7 +1096,7 @@ void loop() {
   if ((now - last_debounce_time3) > debounce_delay) {
     if (r3 != debounced_btn3_state) {
       debounced_btn3_state = r3;
-      if (debounced_btn3_state == HIGH) {
+      if (debounced_btn3_state == (active3 ? HIGH : LOW)) {
         pressed3 = true; long_fired3 = false; press_start3 = now;
       } else {
         if (pressed3 && !long_fired3) {
@@ -1067,25 +1109,25 @@ void loop() {
   }
   if (pressed3 && !long_fired3 && (now - press_start3 >= long_press_ms)) {
     long_fired3 = true; click_count3 = 0;
-    Serial.println("[action] d5 long");
+    Serial.println("[action] btn3 long");
     execute_action(btn3_long_act, btn3_long_topic, btn3_long_payload, btn3_long_url, "btn3-long");
   }
   if (!pressed3 && click_count3 > 0 && (now - release_time3 >= double_click_ms)) {
     if (click_count3 >= 2) {
       if (strlen(btn3_click_topic) > 0 || strlen(btn3_click_url) > 0) {
-        Serial.println("[action] d5 double");
+        Serial.println("[action] btn3 double");
         execute_action(btn3_click_mode, btn3_click_topic, btn3_click_payload, btn3_click_url, "btn3-double");
       } else {
-        Serial.println("[action] d5 double ignore, court x2");
+        Serial.println("[action] btn3 double ignore, court x2");
         execute_action(btn3_mode, btn3_topic, btn3_payload, btn3_url, "btn3-court");
         execute_action(btn3_mode, btn3_topic, btn3_payload, btn3_url, "btn3-court");
       }
     } else {
       if (strcmp(btn3_long_mode, "long") == 0) {
-        Serial.println("[action] d5 court seul");
+        Serial.println("[action] btn3 court seul");
         execute_action(btn3_mode, btn3_topic, btn3_payload, btn3_url, "btn3-court-seul");
       } else {
-        Serial.println("[action] d5 court");
+        Serial.println("[action] btn3 court");
         execute_action(btn3_mode, btn3_topic, btn3_payload, btn3_url, "btn3-court");
       }
     }
