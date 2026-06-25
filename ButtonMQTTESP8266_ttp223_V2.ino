@@ -8,11 +8,10 @@
 #include <PubSubClient.h>
 
 // ------------------------------------------------------------------ broches
-// GPIO boutons configurables depuis l'interface web (defauts D1/D2/D5)
 int btn1_pin = 5;
 int btn2_pin = 4;
 int btn3_pin = 14;
-#define pin_led 2    // d4 = gpio2, led onboard nodemcu (active low)
+#define pin_led 2
 
 // ------------------------------------------------------------------ config
 char wifi_ssid[32]  = "";
@@ -24,19 +23,19 @@ char mqtt_user[40]  = "";
 char mqtt_pass[40]  = "";
 
 // bouton 1
-char btn1_type[10]         = "ttp";      // "ttp" ou "physique"
-char btn1_mode[10]         = "mqtt";     // "mqtt", "http", "both"
+char btn1_type[10]         = "ttp";
+char btn1_mode[10]         = "mqtt";
 char btn1_topic[60]        = "esp/btn1/topic";
 char btn1_payload[100]     = "message_btn1";
 char btn1_url[150]         = "";
 char btn1_name[20]         = "up";
 char btn1_color[10]        = "green";
-char btn1_long_mode[6]     = "both";     // "both" = court+long, "long" = long seul
-char btn1_long_act[10]     = "mqtt";     // "mqtt", "http", "both"
+char btn1_long_mode[6]     = "both";
+char btn1_long_act[10]     = "mqtt";
 char btn1_long_topic[60]   = "";
 char btn1_long_payload[100]= "";
 char btn1_long_url[150]    = "";
-char btn1_click_mode[10]   = "mqtt";     // double clic
+char btn1_click_mode[10]   = "mqtt";
 char btn1_click_topic[60]  = "";
 char btn1_click_payload[100]= "";
 char btn1_click_url[150]   = "";
@@ -77,7 +76,6 @@ char btn3_click_topic[60]  = "";
 char btn3_click_payload[100]= "";
 char btn3_click_url[150]   = "";
 
-// seuils temporels en ms
 unsigned int long_press_ms  = 800;
 unsigned int double_click_ms = 400;
 
@@ -88,11 +86,10 @@ unsigned long last_wifi_attempt  = 0;
 unsigned long last_mqtt_attempt  = 0;
 unsigned int  reconnect_count    = 0;
 
-// clignotement led non bloquant
 unsigned long last_led_toggle    = 0;
 bool          led_state          = false;
 
-// ------------------------------------------------------------------ debounce & etats filtres
+// ------------------------------------------------------------------ debounce
 bool last_raw_btn1_state = LOW;
 bool last_raw_btn2_state = LOW;
 bool last_raw_btn3_state = LOW;
@@ -105,7 +102,6 @@ unsigned long last_debounce_time2 = 0;
 unsigned long last_debounce_time3 = 0;
 const unsigned long debounce_delay = 50;
 
-// structures pour machine d'etats
 unsigned long press_start1 = 0; unsigned long release_time1 = 0; int click_count1 = 0; bool pressed1 = false; bool long_fired1 = false;
 unsigned long press_start2 = 0; unsigned long release_time2 = 0; int click_count2 = 0; bool pressed2 = false; bool long_fired2 = false;
 unsigned long press_start3 = 0; unsigned long release_time3 = 0; int click_count3 = 0; bool pressed3 = false; bool long_fired3 = false;
@@ -115,11 +111,9 @@ ESP8266WebServer         server(80);
 ESP8266HTTPUpdateServer  httpupdater;
 WiFiClient               esp_client;
 PubSubClient             mqtt_client(esp_client);
-
 bool is_ap_mode = false;
 
-// ================================================================== helpers couleur et style
-
+// ================================================================== helpers
 String color_styles(const char* c) {
   String s = String(c);
   if (s == "green")  return "background:#111827;border:1px solid #10b981;color:#10b981;box-shadow:0 0 10px rgba(16,185,129,0.15);";
@@ -144,8 +138,7 @@ String btn_icon(int n) {
   return "&#9632;";
 }
 
-// ================================================================== envoyer l'action
-
+// ================================================================== execute_action
 bool execute_action(const char* mode, const char* topic, const char* payload, const char* url, const char* label) {
   bool success = true;
   String smode = String(mode);
@@ -197,7 +190,6 @@ bool execute_action(const char* mode, const char* topic, const char* payload, co
 }
 
 // ================================================================== config json
-
 void load_config() {
   if (!LittleFS.begin()) return;
   if (!LittleFS.exists("/config.json")) return;
@@ -213,7 +205,6 @@ void load_config() {
     strlcpy(mqtt_user,           json["mqtt_user"]           | "",              sizeof(mqtt_user));
     strlcpy(mqtt_pass,           json["mqtt_pass"]           | "",              sizeof(mqtt_pass));
     
-    // bouton 1
     strlcpy(btn1_type,           json["btn1_type"]           | "ttp",           sizeof(btn1_type));
     strlcpy(btn1_mode,           json["btn1_mode"]           | "mqtt",          sizeof(btn1_mode));
     strlcpy(btn1_topic,          json["btn1_topic"]          | "esp/btn1/topic",sizeof(btn1_topic));
@@ -231,7 +222,6 @@ void load_config() {
     strlcpy(btn1_click_payload,  json["btn1_click_payload"]  | "",              sizeof(btn1_click_payload));
     strlcpy(btn1_click_url,      json["btn1_click_url"]      | "",              sizeof(btn1_click_url));
     
-    // bouton 2
     strlcpy(btn2_type,           json["btn2_type"]           | "ttp",           sizeof(btn2_type));
     strlcpy(btn2_mode,           json["btn2_mode"]           | "mqtt",          sizeof(btn2_mode));
     strlcpy(btn2_topic,          json["btn2_topic"]          | "esp/btn2/topic",sizeof(btn2_topic));
@@ -249,7 +239,6 @@ void load_config() {
     strlcpy(btn2_click_payload,  json["btn2_click_payload"]  | "",              sizeof(btn2_click_payload));
     strlcpy(btn2_click_url,      json["btn2_click_url"]      | "",              sizeof(btn2_click_url));
     
-    // bouton 3
     strlcpy(btn3_type,           json["btn3_type"]           | "ttp",           sizeof(btn3_type));
     strlcpy(btn3_mode,           json["btn3_mode"]           | "mqtt",          sizeof(btn3_mode));
     strlcpy(btn3_topic,          json["btn3_topic"]          | "esp/btn3/topic",sizeof(btn3_topic));
@@ -287,7 +276,6 @@ void save_config() {
   json["mqtt_user"]         = mqtt_user;
   json["mqtt_pass"]         = mqtt_pass;
   
-  // bouton 1
   json["btn1_type"]         = btn1_type;
   json["btn1_mode"]         = btn1_mode;
   json["btn1_topic"]        = btn1_topic;
@@ -305,7 +293,6 @@ void save_config() {
   json["btn1_click_payload"]= btn1_click_payload;
   json["btn1_click_url"]    = btn1_click_url;
   
-  // bouton 2
   json["btn2_type"]         = btn2_type;
   json["btn2_mode"]         = btn2_mode;
   json["btn2_topic"]        = btn2_topic;
@@ -323,7 +310,6 @@ void save_config() {
   json["btn2_click_payload"]= btn2_click_payload;
   json["btn2_click_url"]    = btn2_click_url;
   
-  // bouton 3
   json["btn3_type"]         = btn3_type;
   json["btn3_mode"]         = btn3_mode;
   json["btn3_topic"]        = btn3_topic;
@@ -343,7 +329,6 @@ void save_config() {
   
   json["long_press_ms"]     = long_press_ms;
   json["double_click_ms"]   = double_click_ms;
-
   json["btn1_gpio"] = btn1_pin;
   json["btn2_gpio"] = btn2_pin;
   json["btn3_gpio"] = btn3_pin;
@@ -352,8 +337,7 @@ void save_config() {
   if (f) { serializeJson(json, f); f.close(); }
 }
 
-// ================================================================== led statut
-
+// ================================================================== led
 void update_led() {
   unsigned long now = millis();
   unsigned long interval = 0;
@@ -363,7 +347,7 @@ void update_led() {
     case net_mqtt_ko:      interval = mqtt_enabled ? 800 : 0; break;
     case net_wifi_ko:      interval = 150; break;
     case net_reconnecting: interval = 300; break;
-      }
+  }
 
   if (interval == 0) {
     digitalWrite(pin_led, HIGH);
@@ -431,7 +415,6 @@ void handle_root() {
     html += "<div class='pill pill-dis'>";
     html += "<div class='dot dot-dis'></div>mqtt off</div>";
   }
-  
   html += "</div>";
   if (wifi_ok) html += "<div class='ip'>" + WiFi.localIP().toString() + "</div>";
   if (reconnect_count > 0)
@@ -439,8 +422,13 @@ void handle_root() {
   html += "</div>";
   html += "<div class='card'>";
   
+  // Toggle "action appui long"
   html += "<div class='tgl-container'><span class='tgl-lbl'>&#128336; action appui long</span>";
   html += "<label class='sw'><input type='checkbox' id='tgl_long'><span class='sl'></span></label></div>";
+  
+  // Toggle "action double clic"
+  html += "<div class='tgl-container'><span class='tgl-lbl'>&#128336; action double clic</span>";
+  html += "<label class='sw'><input type='checkbox' id='tgl_double'><span class='sl'></span></label></div>";
 
   html += "<div class='btns'>";
   html += "<button class='btn' style='" + color_styles(btn1_color) + "' onclick='pub(1)'>";
@@ -452,14 +440,26 @@ void handle_root() {
   html += "</div>";
   html += "<div class='footer'><a href='/setup'>&#9881; param&egrave;tres configuration</a></div>";
   html += "</div>";
-  html += "<script>function pub(id){"
-          "var isLong=document.getElementById('tgl_long').checked;"
-          "var type=isLong?'long':'court';"
-          "var x=new XMLHttpRequest();x.open('GET','/trigger?id='+id+'&type='+type,true);x.send();"
-          "}</script>";
+
+  // Nouvelle fonction JavaScript prenant en compte les deux toggles
+  html += "<script>"
+          "function pub(id){"
+          "  var isLong = document.getElementById('tgl_long').checked;"
+          "  var isDouble = document.getElementById('tgl_double').checked;"
+          "  var type = 'court';"
+          "  if (isLong) type = 'long';"
+          "  else if (isDouble) type = 'double';"
+          "  var x = new XMLHttpRequest();"
+          "  x.open('GET','/trigger?id='+id+'&type='+type,true);"
+          "  x.send();"
+          "}"
+          "</script>";
+
   html += "</body></html>";
   server.send(200, "text/html", html);
 }
+
+// ================================================================== helpers setup
 
 String color_option(const char* val, const char* lbl, const char* cur) {
   return "<option value='" + String(val) + "'" + (strcmp(val, cur) == 0 ? " selected" : "") + ">" + String(lbl) + "</option>";
@@ -469,7 +469,6 @@ String act_option(const char* val, const char* lbl, const char* cur) {
   return "<option value='" + String(val) + "'" + (strcmp(val, cur) == 0 ? " selected" : "") + ">" + String(lbl) + "</option>";
 }
 
-// helper select GPIO Wemos D1 mini D0-D8
 String gpio_select(const char* name, int cur) {
   const int   gpios[]  = {16, 5, 4, 0, 2, 14, 12, 13, 15};
   const char* labels[] = {"D0-GPIO16","D1-GPIO5","D2-GPIO4","D3-GPIO0","D4-GPIO2","D5-GPIO14","D6-GPIO12","D7-GPIO13","D8-GPIO15"};
@@ -502,7 +501,6 @@ String btn_card(int n, int gpio_val, const char* type, const char* name, const c
   s += color_option("orange", "orange vif", color);
   s += "</select></div>";
 
-  // --- NOUVEAU : sélection du type de bouton ---
   s += "<div class='row'><label>type de bouton</label><select name='b" + p + "_type'>";
   s += "<option value='ttp'" + String(strcmp(type, "ttp")==0?" selected":"") + ">TTP223 (actif HIGH)</option>";
   s += "<option value='physique'" + String(strcmp(type, "physique")==0?" selected":"") + ">physique (pull-up, actif LOW)</option>";
@@ -524,7 +522,6 @@ String btn_card(int n, int gpio_val, const char* type, const char* name, const c
   s += "<div class='row'><label>url cible courte</label><input type='text' name='b" + p + "_url' value='" + String(url) + "' placeholder='http://...'></div>";
   s += "</div>";
 
-
   s += "<div class='long-hdr' style='color:#3b82f6; border-top-color:#374151;'>&#9898;&#9898; action double clic</div>";
   s += "<div class='row'><label>type de protocole</label><select name='b" + p + "_dmode' onchange='tglFields(this," + p + ",\"d\")'>";
   s += act_option("mqtt", "mqtt uniquement", dmode);
@@ -538,7 +535,6 @@ String btn_card(int n, int gpio_val, const char* type, const char* name, const c
   s += "<div id='b" + p + "_d_http_fields' style='display:" + String(strcmp(dmode,"mqtt")==0?"none":"block") + ";'>";
   s += "<div class='row'><label>url cible double clic</label><input type='text' name='b" + p + "_durl' value='" + String(durl) + "' placeholder='http://...'></div>";
   s += "</div>";
-
 
   s += "<div class='long-hdr' style='color:#ec4899; border-top-color:#374151;'>&#128336; action appui long</div>";
   s += "<div class='row'><label>mode appui long</label><select name='b" + p + "_lm'>";
@@ -571,18 +567,15 @@ void handleBackup() {
   f.close();
 }
 
-// ===================== VERSION CORRIGÉE DE handleRestore() =====================
+// ===================== handleRestore corrigé =====================
 void handleRestore() {
-  // 1. Récupérer le corps de la requête
   if (!server.hasArg("plain")) {
     server.send(400, "text/plain", "body manquant");
     return;
   }
-
   const String& body = server.arg("plain");
   Serial.println("[restore] body reçu, taille : " + String(body.length()));
 
-  // 2. Valider la syntaxe JSON avec un document minimal (256 octets suffisent pour parser)
   DynamicJsonDocument json(256);
   DeserializationError err = deserializeJson(json, body);
   if (err) {
@@ -592,18 +585,14 @@ void handleRestore() {
     return;
   }
   Serial.println("[restore] JSON syntaxiquement valide");
-
-  // 3. Libérer la mémoire du document avant d'écrire
   json.clear();
 
-  // 4. Monter LittleFS
   if (!LittleFS.begin()) {
     Serial.println("[restore] échec montage LittleFS");
     server.send(500, "text/plain", "erreur système de fichiers");
     return;
   }
 
-  // 5. Écrire le fichier
   File f = LittleFS.open("/config.json", "w");
   if (!f) {
     Serial.println("[restore] impossible d'ouvrir /config.json en écriture");
@@ -612,7 +601,7 @@ void handleRestore() {
   }
 
   size_t written = f.print(body);
-  f.flush();         // force l'écriture physique
+  f.flush();
   f.close();
 
   Serial.print("[restore] octets écrits : ");
@@ -624,7 +613,6 @@ void handleRestore() {
     return;
   }
 
-  // 6. Vérifier que le fichier existe et a la bonne taille
   if (!LittleFS.exists("/config.json")) {
     Serial.println("[restore] fichier inexistant après écriture !");
     server.send(500, "text/plain", "fichier non créé");
@@ -645,7 +633,6 @@ void handleRestore() {
     Serial.println("[restore] impossible de rouvrir le fichier pour vérification");
   }
 
-  // 7. Succès
   server.send(200, "text/plain", "ok");
   Serial.println("[restore] restauration réussie, redémarrage dans 500ms");
   delay(500);
@@ -653,11 +640,8 @@ void handleRestore() {
 }
 
 void handle_setup() {
-  // --- 1. En-tête HTTP avec longueur inconnue (streaming) ---
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  server.send(200, "text/html", ""); // envoie uniquement l'en-tête
-
-  // --- 2. Début de la page (balises head, style, body, formulaire) ---
+  server.send(200, "text/html", "");
   server.sendContent(
     "<!doctype html><html><head>"
     "<meta charset='utf-8'>"
@@ -695,7 +679,6 @@ void handle_setup() {
     "<div class='topbar'><span class='topbar-title'>Configuration Param&egrave;tres</span><a href='/' class='back'>&larr; Annuler</a></div>"
   );
 
-  // --- 3. Section WiFi (avec scan des réseaux) ---
   int n = WiFi.scanNetworks();
   server.sendContent(
     "<div class='section'><div class='sec-hdr sec-net'>&#128246; liaison sans-fil wifi</div>"
@@ -704,7 +687,6 @@ void handle_setup() {
     "<div class='row'><label>cl&eacute; de s&eacute;curit&eacute; wpa</label><input type='password' name='password' value='"
     + String(wifi_pass) + "'></div>"
   );
-
   if (n > 0) {
     server.sendContent("<div class='row'><label style='margin-bottom:4px;'>r&eacute;seaux sans-fil scann&eacute;s (cliquer pour s&eacute;lectionner)</label>");
     for (int i = 0; i < n; ++i) {
@@ -714,7 +696,6 @@ void handle_setup() {
   }
   server.sendContent("</div>");
 
-  // --- 4. Section MQTT ---
   server.sendContent(
     "<div class='section'><div class='sec-hdr sec-mqtt'>&#128172; courtier broker mqtt</div>"
     "<div class='row chk-row'><input type='checkbox' name='mqtt_en' value='1'"
@@ -732,28 +713,23 @@ void handle_setup() {
     "</div></div>"
   );
 
-  // --- 5. Section des 3 boutons (appel de btn_card pour chaque) ---
   server.sendContent(
     "<div class='section'><div class='sec-hdr sec-btns'>&#9899; param&eacute;trage des boutons tactiles</div>"
   );
-  // Bouton 1
   server.sendContent(btn_card(1, btn1_pin, btn1_type, btn1_name, btn1_color,
                               btn1_mode, btn1_topic, btn1_payload, btn1_url,
                               btn1_long_topic, btn1_long_payload, btn1_long_url, btn1_long_mode, btn1_long_act,
                               btn1_click_mode, btn1_click_topic, btn1_click_payload, btn1_click_url));
-  // Bouton 2
   server.sendContent(btn_card(2, btn2_pin, btn2_type, btn2_name, btn2_color,
                               btn2_mode, btn2_topic, btn2_payload, btn2_url,
                               btn2_long_topic, btn2_long_payload, btn2_long_url, btn2_long_mode, btn2_long_act,
                               btn2_click_mode, btn2_click_topic, btn2_click_payload, btn2_click_url));
-  // Bouton 3
   server.sendContent(btn_card(3, btn3_pin, btn3_type, btn3_name, btn3_color,
                               btn3_mode, btn3_topic, btn3_payload, btn3_url,
                               btn3_long_topic, btn3_long_payload, btn3_long_url, btn3_long_mode, btn3_long_act,
                               btn3_click_mode, btn3_click_topic, btn3_click_payload, btn3_click_url));
   server.sendContent("</div>");
 
-  // --- 6. Filtres temporels ---
   server.sendContent(
     "<div class='section'><div class='sec-hdr sec-rob'>&#128336; filtres temporels anti-rebond</div>"
     "<div class='grid2'><div class='row'><label>seuil appui long (ms)</label><input type='text' name='t_long' value='"
@@ -763,7 +739,6 @@ void handle_setup() {
     "</div>"
   );
 
-  // --- 7. OTA ---
   server.sendContent(
     "<div class='section'>"
     "<div class='sec-hdr sec-ota'>&#128225; t&eacute;l&eacute;chargement firmware ota</div>"
@@ -773,7 +748,6 @@ void handle_setup() {
     "</div>"
   );
 
-  // --- 8. Backup / Restore ---
   server.sendContent(
     "<div class='section'>"
     "<div class='sec-hdr' style='color:#06b6d4;'>&#128190; sauvegarde &amp; restauration</div>"
@@ -790,13 +764,11 @@ void handle_setup() {
     "</div></div></div>"
   );
 
-  // --- 9. Bouton de soumission et fermeture du formulaire ---
   server.sendContent(
     "<div style='padding:0 12px 30px;'><button type='submit' class='submit-btn'>Appliquer et m&eacute;moriser la configuration</button></div>"
     "</form>"
   );
 
-  // --- 10. Scripts JavaScript ---
   server.sendContent(
     "<script>"
     "function tglMqtt(){document.getElementById('mqtt_fields').style.display=document.getElementById('mq_en').checked?'block':'none';}"
@@ -831,10 +803,9 @@ void handle_setup() {
     "</script>"
     "</body></html>"
   );
-
-  // --- 11. Fermeture de la réponse ---
-  server.sendContent("");  // termine le streaming
+  server.sendContent("");
 }
+
 void handle_save() {
   strlcpy(wifi_ssid, server.arg("ssid").c_str(), sizeof(wifi_ssid));
   strlcpy(wifi_pass, server.arg("password").c_str(), sizeof(wifi_pass));
@@ -845,7 +816,6 @@ void handle_save() {
   strlcpy(mqtt_user,   server.arg("mq_usr").c_str(), sizeof(mqtt_user));
   strlcpy(mqtt_pass,   server.arg("mq_pwd").c_str(), sizeof(mqtt_pass));
 
-  // bouton 1
   strlcpy(btn1_type,          server.arg("b1_type").c_str(),  sizeof(btn1_type));
   strlcpy(btn1_name,          server.arg("b1_name").c_str(),  sizeof(btn1_name));
   strlcpy(btn1_color,         server.arg("b1_color").c_str(), sizeof(btn1_color));
@@ -863,7 +833,6 @@ void handle_save() {
   strlcpy(btn1_click_payload, server.arg("b1_dp").c_str(),    sizeof(btn1_click_payload));
   strlcpy(btn1_click_url,     server.arg("b1_durl").c_str(),  sizeof(btn1_click_url));
 
-  // bouton 2
   strlcpy(btn2_type,          server.arg("b2_type").c_str(),  sizeof(btn2_type));
   strlcpy(btn2_name,          server.arg("b2_name").c_str(),  sizeof(btn2_name));
   strlcpy(btn2_color,         server.arg("b2_color").c_str(), sizeof(btn2_color));
@@ -881,7 +850,6 @@ void handle_save() {
   strlcpy(btn2_click_payload, server.arg("b2_dp").c_str(),    sizeof(btn2_click_payload));
   strlcpy(btn2_click_url,     server.arg("b2_durl").c_str(),  sizeof(btn2_click_url));
 
-  // bouton 3
   strlcpy(btn3_type,          server.arg("b3_type").c_str(),  sizeof(btn3_type));
   strlcpy(btn3_name,          server.arg("b3_name").c_str(),  sizeof(btn3_name));
   strlcpy(btn3_color,         server.arg("b3_color").c_str(), sizeof(btn3_color));
@@ -937,14 +905,12 @@ void handle_trigger() {
 }
 
 // ================================================================== loop reseau
-
 void handle_network() {
   unsigned long now = millis();
   bool wifi_connected = (WiFi.status() == WL_CONNECTED);
 
   if (!wifi_connected) {
     net_state = net_wifi_ko;
-    // reconnexion en arriere-plan geree par l'esp via setautoreconnect(true)
     return;
   }
 
@@ -975,8 +941,7 @@ void handle_network() {
   }
 }
 
-// ================================================================== setup & loop principal
-
+// ================================================================== setup & loop
 void setup() {
   Serial.begin(115200);
   Serial.println("\n[sys] demarrage");
@@ -986,7 +951,6 @@ void setup() {
 
   load_config();
 
-  // Configuration des broches en fonction du type
   if (strcmp(btn1_type, "physique") == 0)
     pinMode(btn1_pin, INPUT_PULLUP);
   else
@@ -1002,7 +966,6 @@ void setup() {
   else
     pinMode(btn3_pin, INPUT);
 
-  // Lecture initiale pour les états de repos
   last_raw_btn1_state = digitalRead(btn1_pin);
   last_raw_btn2_state = digitalRead(btn2_pin);
   last_raw_btn3_state = digitalRead(btn3_pin);
@@ -1059,19 +1022,18 @@ void loop() {
   bool r2 = digitalRead(btn2_pin);
   bool r3 = digitalRead(btn3_pin);
 
-  // Déterminer le niveau actif pour chaque bouton
-  bool active1 = (strcmp(btn1_type, "ttp") == 0); // true = HIGH actif
+  bool active1 = (strcmp(btn1_type, "ttp") == 0);
   bool active2 = (strcmp(btn2_type, "ttp") == 0);
   bool active3 = (strcmp(btn3_type, "ttp") == 0);
 
-  // ---- machine d'etats bouton 1 ----
+  // ---- bouton 1 ----
   if (r1 != last_raw_btn1_state) { last_debounce_time1 = now; last_raw_btn1_state = r1; }
   if ((now - last_debounce_time1) > debounce_delay) {
     if (r1 != debounced_btn1_state) {
       debounced_btn1_state = r1;
-      if (debounced_btn1_state == (active1 ? HIGH : LOW)) { // appui
+      if (debounced_btn1_state == (active1 ? HIGH : LOW)) {
         pressed1 = true; long_fired1 = false; press_start1 = now;
-      } else { // relâchement
+      } else {
         if (pressed1 && !long_fired1) {
           click_count1++;
           release_time1 = now;
@@ -1107,7 +1069,7 @@ void loop() {
     click_count1 = 0;
   }
 
-  // ---- machine d'etats bouton 2 ----
+  // ---- bouton 2 ----
   if (r2 != last_raw_btn2_state) { last_debounce_time2 = now; last_raw_btn2_state = r2; }
   if ((now - last_debounce_time2) > debounce_delay) {
     if (r2 != debounced_btn2_state) {
@@ -1150,7 +1112,7 @@ void loop() {
     click_count2 = 0;
   }
 
-  // ---- machine d'etats bouton 3 ----
+  // ---- bouton 3 ----
   if (r3 != last_raw_btn3_state) { last_debounce_time3 = now; last_raw_btn3_state = r3; }
   if ((now - last_debounce_time3) > debounce_delay) {
     if (r3 != debounced_btn3_state) {
