@@ -35,10 +35,12 @@ char btn1_long_act[10]     = "mqtt";
 char btn1_long_topic[60]   = "";
 char btn1_long_payload[100]= "";
 char btn1_long_url[150]    = "";
+char btn1_long_name[20]    = "";   // nom pour appui long
 char btn1_click_mode[10]   = "mqtt";
 char btn1_click_topic[60]  = "";
 char btn1_click_payload[100]= "";
 char btn1_click_url[150]   = "";
+char btn1_click_name[20]   = "";   // nom pour double clic
 
 // bouton 2
 char btn2_type[10]         = "ttp";
@@ -53,10 +55,12 @@ char btn2_long_act[10]     = "mqtt";
 char btn2_long_topic[60]   = "";
 char btn2_long_payload[100]= "";
 char btn2_long_url[150]    = "";
+char btn2_long_name[20]    = "";
 char btn2_click_mode[10]   = "mqtt";
 char btn2_click_topic[60]  = "";
 char btn2_click_payload[100]= "";
 char btn2_click_url[150]   = "";
+char btn2_click_name[20]   = "";
 
 // bouton 3
 char btn3_type[10]         = "ttp";
@@ -71,10 +75,12 @@ char btn3_long_act[10]     = "mqtt";
 char btn3_long_topic[60]   = "";
 char btn3_long_payload[100]= "";
 char btn3_long_url[150]    = "";
+char btn3_long_name[20]    = "";
 char btn3_click_mode[10]   = "mqtt";
 char btn3_click_topic[60]  = "";
 char btn3_click_payload[100]= "";
 char btn3_click_url[150]   = "";
+char btn3_click_name[20]   = "";
 
 unsigned int long_press_ms  = 800;
 unsigned int double_click_ms = 400;
@@ -217,10 +223,12 @@ void load_config() {
     strlcpy(btn1_long_url,       json["btn1_long_url"]       | "",              sizeof(btn1_long_url));
     strlcpy(btn1_long_mode,      json["btn1_long_mode"]      | "both",          sizeof(btn1_long_mode));
     strlcpy(btn1_long_act,       json["btn1_long_act"]       | "mqtt",          sizeof(btn1_long_act));
+    strlcpy(btn1_long_name,      json["btn1_long_name"]      | "",              sizeof(btn1_long_name));
     strlcpy(btn1_click_mode,     json["btn1_click_mode"]     | "mqtt",          sizeof(btn1_click_mode));
     strlcpy(btn1_click_topic,    json["btn1_click_topic"]    | "",              sizeof(btn1_click_topic));
     strlcpy(btn1_click_payload,  json["btn1_click_payload"]  | "",              sizeof(btn1_click_payload));
     strlcpy(btn1_click_url,      json["btn1_click_url"]      | "",              sizeof(btn1_click_url));
+    strlcpy(btn1_click_name,     json["btn1_click_name"]     | "",              sizeof(btn1_click_name));
     
     strlcpy(btn2_type,           json["btn2_type"]           | "ttp",           sizeof(btn2_type));
     strlcpy(btn2_mode,           json["btn2_mode"]           | "mqtt",          sizeof(btn2_mode));
@@ -234,10 +242,12 @@ void load_config() {
     strlcpy(btn2_long_url,       json["btn2_long_url"]       | "",              sizeof(btn2_long_url));
     strlcpy(btn2_long_mode,      json["btn2_long_mode"]      | "both",          sizeof(btn2_long_mode));
     strlcpy(btn2_long_act,       json["btn2_long_act"]       | "mqtt",          sizeof(btn2_long_act));
+    strlcpy(btn2_long_name,      json["btn2_long_name"]      | "",              sizeof(btn2_long_name));
     strlcpy(btn2_click_mode,     json["btn2_click_mode"]     | "mqtt",          sizeof(btn2_click_mode));
     strlcpy(btn2_click_topic,    json["btn2_click_topic"]    | "",              sizeof(btn2_click_topic));
     strlcpy(btn2_click_payload,  json["btn2_click_payload"]  | "",              sizeof(btn2_click_payload));
     strlcpy(btn2_click_url,      json["btn2_click_url"]      | "",              sizeof(btn2_click_url));
+    strlcpy(btn2_click_name,     json["btn2_click_name"]     | "",              sizeof(btn2_click_name));
     
     strlcpy(btn3_type,           json["btn3_type"]           | "ttp",           sizeof(btn3_type));
     strlcpy(btn3_mode,           json["btn3_mode"]           | "mqtt",          sizeof(btn3_mode));
@@ -251,10 +261,12 @@ void load_config() {
     strlcpy(btn3_long_url,       json["btn3_long_url"]       | "",              sizeof(btn3_long_url));
     strlcpy(btn3_long_mode,      json["btn3_long_mode"]      | "both",          sizeof(btn3_long_mode));
     strlcpy(btn3_long_act,       json["btn3_long_act"]       | "mqtt",          sizeof(btn3_long_act));
+    strlcpy(btn3_long_name,      json["btn3_long_name"]      | "",              sizeof(btn3_long_name));
     strlcpy(btn3_click_mode,     json["btn3_click_mode"]     | "mqtt",          sizeof(btn3_click_mode));
     strlcpy(btn3_click_topic,    json["btn3_click_topic"]    | "",              sizeof(btn3_click_topic));
     strlcpy(btn3_click_payload,  json["btn3_click_payload"]  | "",              sizeof(btn3_click_payload));
     strlcpy(btn3_click_url,      json["btn3_click_url"]      | "",              sizeof(btn3_click_url));
+    strlcpy(btn3_click_name,     json["btn3_click_name"]     | "",              sizeof(btn3_click_name));
     
     long_press_ms   = json["long_press_ms"]   | 800;
     double_click_ms = json["double_click_ms"] | 400;
@@ -262,6 +274,14 @@ void load_config() {
     btn1_pin = json["btn1_gpio"] | 5;
     btn2_pin = json["btn2_gpio"] | 4;
     btn3_pin = json["btn3_gpio"] | 14;
+
+    // rétrocompatibilité : si les nouveaux noms sont vides, on utilise le nom court
+    if (strlen(btn1_long_name) == 0) strlcpy(btn1_long_name, btn1_name, sizeof(btn1_long_name));
+    if (strlen(btn1_click_name) == 0) strlcpy(btn1_click_name, btn1_name, sizeof(btn1_click_name));
+    if (strlen(btn2_long_name) == 0) strlcpy(btn2_long_name, btn2_name, sizeof(btn2_long_name));
+    if (strlen(btn2_click_name) == 0) strlcpy(btn2_click_name, btn2_name, sizeof(btn2_click_name));
+    if (strlen(btn3_long_name) == 0) strlcpy(btn3_long_name, btn3_name, sizeof(btn3_long_name));
+    if (strlen(btn3_click_name) == 0) strlcpy(btn3_click_name, btn3_name, sizeof(btn3_click_name));
   }
   f.close();
 }
@@ -288,10 +308,12 @@ void save_config() {
   json["btn1_long_url"]     = btn1_long_url;
   json["btn1_long_mode"]    = btn1_long_mode;
   json["btn1_long_act"]     = btn1_long_act;
+  json["btn1_long_name"]    = btn1_long_name;
   json["btn1_click_mode"]   = btn1_click_mode;
   json["btn1_click_topic"]  = btn1_click_topic;
   json["btn1_click_payload"]= btn1_click_payload;
   json["btn1_click_url"]    = btn1_click_url;
+  json["btn1_click_name"]   = btn1_click_name;
   
   json["btn2_type"]         = btn2_type;
   json["btn2_mode"]         = btn2_mode;
@@ -305,10 +327,12 @@ void save_config() {
   json["btn2_long_url"]     = btn2_long_url;
   json["btn2_long_mode"]    = btn2_long_mode;
   json["btn2_long_act"]     = btn2_long_act;
+  json["btn2_long_name"]    = btn2_long_name;
   json["btn2_click_mode"]   = btn2_click_mode;
   json["btn2_click_topic"]  = btn2_click_topic;
   json["btn2_click_payload"]= btn2_click_payload;
   json["btn2_click_url"]    = btn2_click_url;
+  json["btn2_click_name"]   = btn2_click_name;
   
   json["btn3_type"]         = btn3_type;
   json["btn3_mode"]         = btn3_mode;
@@ -322,10 +346,12 @@ void save_config() {
   json["btn3_long_url"]     = btn3_long_url;
   json["btn3_long_mode"]    = btn3_long_mode;
   json["btn3_long_act"]     = btn3_long_act;
+  json["btn3_long_name"]    = btn3_long_name;
   json["btn3_click_mode"]   = btn3_click_mode;
   json["btn3_click_topic"]  = btn3_click_topic;
   json["btn3_click_payload"]= btn3_click_payload;
   json["btn3_click_url"]    = btn3_click_url;
+  json["btn3_click_name"]   = btn3_click_name;
   
   json["long_press_ms"]     = long_press_ms;
   json["double_click_ms"]   = double_click_ms;
@@ -422,37 +448,66 @@ void handle_root() {
   html += "</div>";
   html += "<div class='card'>";
   
-  // Toggle "action appui long"
+  // Toggle "action appui long" avec id et événement
   html += "<div class='tgl-container'><span class='tgl-lbl'>&#128336; action appui long</span>";
-  html += "<label class='sw'><input type='checkbox' id='tgl_long'><span class='sl'></span></label></div>";
+  html += "<label class='sw'><input type='checkbox' id='tgl_long' onchange='toggleExclusive(this)'><span class='sl'></span></label></div>";
   
-  // Toggle "action double clic"
+  // Toggle "action double clic" avec id et événement
   html += "<div class='tgl-container'><span class='tgl-lbl'>&#128336; action double clic</span>";
-  html += "<label class='sw'><input type='checkbox' id='tgl_double'><span class='sl'></span></label></div>";
+  html += "<label class='sw'><input type='checkbox' id='tgl_double' onchange='toggleExclusive(this)'><span class='sl'></span></label></div>";
 
   html += "<div class='btns'>";
-  html += "<button class='btn' style='" + color_styles(btn1_color) + "' onclick='pub(1)'>";
-  html += "<span class='btn-icon'>" + btn_icon(1) + "</span><span>" + String(btn1_name) + "</span></button>";
-  html += "<button class='btn' style='" + color_styles(btn2_color) + "' onclick='pub(2)'>";
-  html += "<span class='btn-icon'>" + btn_icon(2) + "</span><span>" + String(btn2_name) + "</span></button>";
-  html += "<button class='btn' style='" + color_styles(btn3_color) + "' onclick='pub(3)'>";
-  html += "<span class='btn-icon'>" + btn_icon(3) + "</span><span>" + String(btn3_name) + "</span></button>";
+  // Bouton 1
+  html += "<button class='btn' style='" + color_styles(btn1_color) + "' id='btn1' onclick='pub(1)'>";
+  html += "<span class='btn-icon'>" + btn_icon(1) + "</span><span id='label1'>" + String(btn1_name) + "</span></button>";
+  // Bouton 2
+  html += "<button class='btn' style='" + color_styles(btn2_color) + "' id='btn2' onclick='pub(2)'>";
+  html += "<span class='btn-icon'>" + btn_icon(2) + "</span><span id='label2'>" + String(btn2_name) + "</span></button>";
+  // Bouton 3
+  html += "<button class='btn' style='" + color_styles(btn3_color) + "' id='btn3' onclick='pub(3)'>";
+  html += "<span class='btn-icon'>" + btn_icon(3) + "</span><span id='label3'>" + String(btn3_name) + "</span></button>";
   html += "</div>";
   html += "<div class='footer'><a href='/setup'>&#9881; param&egrave;tres configuration</a></div>";
   html += "</div>";
 
-  // Nouvelle fonction JavaScript prenant en compte les deux toggles
+  // JavaScript : exclusivité des toggles + mise à jour des noms
   html += "<script>"
-          "function pub(id){"
-          "  var isLong = document.getElementById('tgl_long').checked;"
-          "  var isDouble = document.getElementById('tgl_double').checked;"
-          "  var type = 'court';"
-          "  if (isLong) type = 'long';"
-          "  else if (isDouble) type = 'double';"
-          "  var x = new XMLHttpRequest();"
-          "  x.open('GET','/trigger?id='+id+'&type='+type,true);"
-          "  x.send();"
-          "}"
+          "// Noms pour chaque bouton et chaque type (préparés depuis le serveur)\n"
+          "var names = {\n"
+          "  1: { court: '" + String(btn1_name) + "', long: '" + String(btn1_long_name) + "', double: '" + String(btn1_click_name) + "' },\n"
+          "  2: { court: '" + String(btn2_name) + "', long: '" + String(btn2_long_name) + "', double: '" + String(btn2_click_name) + "' },\n"
+          "  3: { court: '" + String(btn3_name) + "', long: '" + String(btn3_long_name) + "', double: '" + String(btn3_click_name) + "' }\n"
+          "};\n"
+          "function toggleExclusive(chk) {\n"
+          "  var other = (chk.id == 'tgl_long') ? 'tgl_double' : 'tgl_long';\n"
+          "  if (chk.checked) {\n"
+          "    document.getElementById(other).checked = false;\n"
+          "  }\n"
+          "  updateLabels();\n"
+          "}\n"
+          "function updateLabels() {\n"
+          "  var isLong = document.getElementById('tgl_long').checked;\n"
+          "  var isDouble = document.getElementById('tgl_double').checked;\n"
+          "  var type = 'court';\n"
+          "  if (isLong) type = 'long';\n"
+          "  else if (isDouble) type = 'double';\n"
+          "  for (var i = 1; i <= 3; i++) {\n"
+          "    var label = document.getElementById('label' + i);\n"
+          "    if (label) label.textContent = names[i][type];\n"
+          "  }\n"
+          "}\n"
+          "function pub(id) {\n"
+          "  var isLong = document.getElementById('tgl_long').checked;\n"
+          "  var isDouble = document.getElementById('tgl_double').checked;\n"
+          "  var type = 'court';\n"
+          "  if (isLong) type = 'long';\n"
+          "  else if (isDouble) type = 'double';\n"
+          "  var x = new XMLHttpRequest();\n"
+          "  x.open('GET','/trigger?id='+id+'&type='+type,true);\n"
+          "  x.send();\n"
+          "}\n"
+          "// Initialisation\n"
+          "updateLabels();\n"
           "</script>";
 
   html += "</body></html>";
@@ -482,8 +537,8 @@ String gpio_select(const char* name, int cur) {
 
 String btn_card(int n, int gpio_val, const char* type, const char* name, const char* color, 
                  const char* mode, const char* topic, const char* payload, const char* url, 
-                 const char* ltopic, const char* lpayload, const char* lurl, const char* lmode, const char* lact,
-                 const char* dmode, const char* dtopic, const char* dpayload, const char* durl) {
+                 const char* ltopic, const char* lpayload, const char* lurl, const char* lmode, const char* lact, const char* lname,
+                 const char* dmode, const char* dtopic, const char* dpayload, const char* durl, const char* dname) {
   String p   = String(n);
   String dot = "dot" + p;
   String s;
@@ -491,7 +546,9 @@ String btn_card(int n, int gpio_val, const char* type, const char* name, const c
   s += "<div class='btn-card-hdr'><div class='clr-dot' id='" + dot + "' style='background:" + color_hex(color) + "'></div>";
   s += "Bouton " + p + "</div>";
 
-  s += "<div class='row'><label>nom affich&eacute;</label><input type='text' name='b" + p + "_name' value='" + String(name) + "' maxlength='12'></div>";
+  s += "<div class='row'><label>nom affich&eacute; (clic court)</label><input type='text' name='b" + p + "_name' value='" + String(name) + "' maxlength='12'></div>";
+  s += "<div class='row'><label>nom pour appui long</label><input type='text' name='b" + p + "_lname' value='" + String(lname) + "' maxlength='12' placeholder='vide = nom court'></div>";
+  s += "<div class='row'><label>nom pour double clic</label><input type='text' name='b" + p + "_dname' value='" + String(dname) + "' maxlength='12' placeholder='vide = nom court'></div>";
 
   s += "<div class='row'><label>couleur bouton d'accueil</label><select name='b" + p + "_color' onchange='upd(this,\"" + dot + "\")'>";
   s += color_option("green",  "vert fluo",  color);
@@ -718,16 +775,16 @@ void handle_setup() {
   );
   server.sendContent(btn_card(1, btn1_pin, btn1_type, btn1_name, btn1_color,
                               btn1_mode, btn1_topic, btn1_payload, btn1_url,
-                              btn1_long_topic, btn1_long_payload, btn1_long_url, btn1_long_mode, btn1_long_act,
-                              btn1_click_mode, btn1_click_topic, btn1_click_payload, btn1_click_url));
+                              btn1_long_topic, btn1_long_payload, btn1_long_url, btn1_long_mode, btn1_long_act, btn1_long_name,
+                              btn1_click_mode, btn1_click_topic, btn1_click_payload, btn1_click_url, btn1_click_name));
   server.sendContent(btn_card(2, btn2_pin, btn2_type, btn2_name, btn2_color,
                               btn2_mode, btn2_topic, btn2_payload, btn2_url,
-                              btn2_long_topic, btn2_long_payload, btn2_long_url, btn2_long_mode, btn2_long_act,
-                              btn2_click_mode, btn2_click_topic, btn2_click_payload, btn2_click_url));
+                              btn2_long_topic, btn2_long_payload, btn2_long_url, btn2_long_mode, btn2_long_act, btn2_long_name,
+                              btn2_click_mode, btn2_click_topic, btn2_click_payload, btn2_click_url, btn2_click_name));
   server.sendContent(btn_card(3, btn3_pin, btn3_type, btn3_name, btn3_color,
                               btn3_mode, btn3_topic, btn3_payload, btn3_url,
-                              btn3_long_topic, btn3_long_payload, btn3_long_url, btn3_long_mode, btn3_long_act,
-                              btn3_click_mode, btn3_click_topic, btn3_click_payload, btn3_click_url));
+                              btn3_long_topic, btn3_long_payload, btn3_long_url, btn3_long_mode, btn3_long_act, btn3_long_name,
+                              btn3_click_mode, btn3_click_topic, btn3_click_payload, btn3_click_url, btn3_click_name));
   server.sendContent("</div>");
 
   server.sendContent(
@@ -816,6 +873,7 @@ void handle_save() {
   strlcpy(mqtt_user,   server.arg("mq_usr").c_str(), sizeof(mqtt_user));
   strlcpy(mqtt_pass,   server.arg("mq_pwd").c_str(), sizeof(mqtt_pass));
 
+  // Bouton 1
   strlcpy(btn1_type,          server.arg("b1_type").c_str(),  sizeof(btn1_type));
   strlcpy(btn1_name,          server.arg("b1_name").c_str(),  sizeof(btn1_name));
   strlcpy(btn1_color,         server.arg("b1_color").c_str(), sizeof(btn1_color));
@@ -828,11 +886,14 @@ void handle_save() {
   strlcpy(btn1_long_topic,    server.arg("b1_lt").c_str(),    sizeof(btn1_long_topic));
   strlcpy(btn1_long_payload,  server.arg("b1_lp").c_str(),    sizeof(btn1_long_payload));
   strlcpy(btn1_long_url,      server.arg("b1_lurl").c_str(),  sizeof(btn1_long_url));
+  strlcpy(btn1_long_name,     server.arg("b1_lname").c_str(), sizeof(btn1_long_name));
   strlcpy(btn1_click_mode,    server.arg("b1_dmode").c_str(), sizeof(btn1_click_mode));
   strlcpy(btn1_click_topic,   server.arg("b1_dt").c_str(),    sizeof(btn1_click_topic));
   strlcpy(btn1_click_payload, server.arg("b1_dp").c_str(),    sizeof(btn1_click_payload));
   strlcpy(btn1_click_url,     server.arg("b1_durl").c_str(),  sizeof(btn1_click_url));
+  strlcpy(btn1_click_name,    server.arg("b1_dname").c_str(), sizeof(btn1_click_name));
 
+  // Bouton 2
   strlcpy(btn2_type,          server.arg("b2_type").c_str(),  sizeof(btn2_type));
   strlcpy(btn2_name,          server.arg("b2_name").c_str(),  sizeof(btn2_name));
   strlcpy(btn2_color,         server.arg("b2_color").c_str(), sizeof(btn2_color));
@@ -845,11 +906,14 @@ void handle_save() {
   strlcpy(btn2_long_topic,    server.arg("b2_lt").c_str(),    sizeof(btn2_long_topic));
   strlcpy(btn2_long_payload,  server.arg("b2_lp").c_str(),    sizeof(btn2_long_payload));
   strlcpy(btn2_long_url,      server.arg("b2_lurl").c_str(),  sizeof(btn2_long_url));
+  strlcpy(btn2_long_name,     server.arg("b2_lname").c_str(), sizeof(btn2_long_name));
   strlcpy(btn2_click_mode,    server.arg("b2_dmode").c_str(), sizeof(btn2_click_mode));
   strlcpy(btn2_click_topic,   server.arg("b2_dt").c_str(),    sizeof(btn2_click_topic));
   strlcpy(btn2_click_payload, server.arg("b2_dp").c_str(),    sizeof(btn2_click_payload));
   strlcpy(btn2_click_url,     server.arg("b2_durl").c_str(),  sizeof(btn2_click_url));
+  strlcpy(btn2_click_name,    server.arg("b2_dname").c_str(), sizeof(btn2_click_name));
 
+  // Bouton 3
   strlcpy(btn3_type,          server.arg("b3_type").c_str(),  sizeof(btn3_type));
   strlcpy(btn3_name,          server.arg("b3_name").c_str(),  sizeof(btn3_name));
   strlcpy(btn3_color,         server.arg("b3_color").c_str(), sizeof(btn3_color));
@@ -862,10 +926,12 @@ void handle_save() {
   strlcpy(btn3_long_topic,    server.arg("b3_lt").c_str(),    sizeof(btn3_long_topic));
   strlcpy(btn3_long_payload,  server.arg("b3_lp").c_str(),    sizeof(btn3_long_payload));
   strlcpy(btn3_long_url,      server.arg("b3_lurl").c_str(),  sizeof(btn3_long_url));
+  strlcpy(btn3_long_name,     server.arg("b3_lname").c_str(), sizeof(btn3_long_name));
   strlcpy(btn3_click_mode,    server.arg("b3_dmode").c_str(), sizeof(btn3_click_mode));
   strlcpy(btn3_click_topic,   server.arg("b3_dt").c_str(),    sizeof(btn3_click_topic));
   strlcpy(btn3_click_payload, server.arg("b3_dp").c_str(),    sizeof(btn3_click_payload));
   strlcpy(btn3_click_url,     server.arg("b3_durl").c_str(),  sizeof(btn3_click_url));
+  strlcpy(btn3_click_name,    server.arg("b3_dname").c_str(), sizeof(btn3_click_name));
 
   if (server.hasArg("t_long"))   long_press_ms   = server.arg("t_long").toInt();
   if (server.hasArg("t_double")) double_click_ms = server.arg("t_double").toInt();
